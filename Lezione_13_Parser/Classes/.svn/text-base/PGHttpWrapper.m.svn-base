@@ -1,0 +1,87 @@
+//
+//  HttpWrapper.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 24/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGHttpWrapper.h"
+#import <CFNetwork/CFNetwork.h>
+
+@interface PGHttpWrapper (PrivateMethods)
+
+@end
+
+@implementation PGHttpWrapper
+
+- (id) initWithTarget:(id)Target {
+  self = [super init];
+  if ( !self ) return nil;
+  
+  _Target = Target;
+  _Connection = [NSURLConnection alloc];
+  _RequestId = -1;
+  
+  return self;
+}
+
+- (void) RequestData:(NSDictionary*)Params  {
+  id r = [Params objectForKey:@"requestid"];
+  if ( r ) _RequestId = [r intValue];
+  
+  _Selector = NSSelectorFromString([Params objectForKey:@"selector"]);
+  NSString *query = [PGHttpWrapper UrlEncode:[Params objectForKey:@"query"]];
+  NSURL *url = [NSURL URLWithString:query];
+	NSURLRequest *request = [NSURLRequest requestWithURL:url];
+	[_Connection initWithRequest:request delegate:self];
+}
+
+- (void)connection:(NSURLConnection*)connection didReceiveResponse:(NSURLResponse*)response {
+	_Data = [[NSMutableData alloc] init];
+}
+
+- (void)connection:(NSURLConnection*)connection didReceiveData:(NSData*)myData {
+  [_Data appendData:myData];
+}
+
+- (void)connection:(NSURLConnection*)connection didFailWithError:(NSError*)error {
+  NSLog(@"%@", [error localizedDescription]);
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection*)connection {
+  
+  if ( _Target && [_Target respondsToSelector:_Selector] ) {
+    if ( _RequestId == -1  ) [_Target performSelector:_Selector withObject:_Data];
+    else [_Target performSelector:_Selector withObject:_Data withObject:[NSNumber numberWithInt:_RequestId]];
+  }
+  
+  if ( _Data ) {
+    [_Data release];
+    _Data = nil;
+  }  
+}
+
+- (void) dealloc {
+  [_Connection release];
+	[super dealloc];
+}
+
++ (NSString *)UrlEncode:(NSString *)string {
+  return [(NSString *) CFURLCreateStringByAddingPercentEscapes(
+          NULL,
+          (CFStringRef) string,
+          NULL,
+          (CFStringRef) @"!*'();@$%#[]àèéìòù",
+          kCFStringEncodingUTF8) autorelease];
+}
+
++ (NSString *)UrlDecode:(NSString *)string {
+  return [(NSString *)CFURLCreateStringByReplacingPercentEscapesUsingEncoding(
+          NULL,
+          (CFStringRef) string,
+          CFSTR(""),
+          kCFStringEncodingUTF8) autorelease];
+}
+
+@end

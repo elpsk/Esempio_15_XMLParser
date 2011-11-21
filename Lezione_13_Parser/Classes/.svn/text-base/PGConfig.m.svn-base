@@ -1,0 +1,30 @@
+//
+//  Config.m
+//  tc
+//
+//  Created by Gianluca Folloni on 03/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import "PGConfig.h"
+
+
+@implementation PGConfig
+
++ (NSString*) GetKey:(NSString*) Key ofFile:(NSString*) File {  
+  NSString *path = [PGConfig GetBundleFile:File ofType:@"plist"];
+	NSDictionary *dict = [[[NSDictionary alloc] initWithContentsOfFile:path] autorelease];
+  return [dict valueForKey:Key];
+}
+
++ (NSString*) GetKeyAsUrl:(NSString*)Key ofFile:(NSString*)File {
+  NSString *url = [self GetKey:Key ofFile:File];
+  return [url stringByReplacingOccurrencesOfString:@" " withString:@"+"];
+}
+
++ (NSString*) GetBundleFile:(NSString*)Name ofType:(NSString*)Type {
+  NSBundle *bundle = [NSBundle bundleWithPath:[[NSBundle mainBundle] pathForResource:@"PgLib" ofType:@"bundle"]];
+  return [bundle pathForResource:Name ofType:Type];
+}
+
+@end

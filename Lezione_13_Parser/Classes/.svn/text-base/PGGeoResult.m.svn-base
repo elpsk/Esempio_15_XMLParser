@@ -1,0 +1,218 @@
+//
+//  Result.m
+//  tc
+//
+//  Created by Gianluca Folloni on 04/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import "PGGeoResult.h"
+#import "PGFormule.h"
+
+@interface PGGeoResult (Internals)
+  - (void) SetRegione:(NSString*)Regione andProvincia:(NSString*)Provincia 
+            andComune:(NSString*)Comune andFrazione:(NSString*)Frazione
+         andIndirizzo:(NSString*)Indirizzo andCivico:(int)Civico 
+              andZona:(NSString*)Zona andPosizione:(CLLocationCoordinate2D)Posizione
+            andZonaId:(int)ZonaId andRegioneId:(int)RegioneId
+       andProvinciaId:(int)ProvinciaId andComuneId:(int)ComuneId
+        andFrazioneId:(int)FrazioneId;
+  - (id) copyWithZone:(NSZone *)zone;
+@end
+
+
+@implementation PGGeoResult
+
+@synthesize Zona=_Zona, Regione=_Regione, Provincia=_Provincia, Comune=_Comune, 
+Frazione=_Frazione, Indirizzo=_Indirizzo, Civico=_Civico, Posizione=_Posizione;
+@synthesize ZonaId = _ZonaId, RegioneId = _RegioneId, ProvinciaId = _ProvinciaId,
+ComuneId = _ComuneId, FrazioneId = _FrazioneId;
+
+- (id) copyWithZone:(NSZone *)zone {
+  PGGeoResult *geo = [[PGGeoResult allocWithZone:zone] init];
+  [geo SetRegione:_Regione 
+     andProvincia:_Provincia 
+        andComune:_Comune 
+      andFrazione:_Frazione 
+     andIndirizzo:_Indirizzo 
+        andCivico:_Civico 
+          andZona:_Zona 
+     andPosizione:_Posizione
+        andZonaId:_ZonaId
+     andRegioneId:_RegioneId
+   andProvinciaId:_ProvinciaId
+      andComuneId:_ComuneId
+    andFrazioneId:_FrazioneId
+  ];
+  return geo;
+}
+
+- (id) init {
+  if (self = [super init]) {
+  }
+  return self;
+}
+
+
+- (id) initWithCoder:(NSCoder *)decoder {
+  
+  if ( self = [super init] ) { 
+    
+    self.Zona       = [[decoder decodeObjectForKey:@"Zona"] retain];
+    self.Regione    = [[decoder decodeObjectForKey:@"Regione"] retain];
+    self.Provincia  = [[decoder decodeObjectForKey:@"Provincia"] retain];
+    self.Comune     = [[decoder decodeObjectForKey:@"Comune"] retain];
+    self.Frazione   = [[decoder decodeObjectForKey:@"Frazione"] retain];
+    self.Indirizzo  = [[decoder decodeObjectForKey:@"Indirizzo"] retain];
+    
+    self.ZonaId     = [[decoder decodeObjectForKey:@"ZonaId"] intValue];
+    self.RegioneId  = [[decoder decodeObjectForKey:@"RegioneId"] intValue];
+    self.ProvinciaId= [[decoder decodeObjectForKey:@"ProvinciaId"] intValue];
+    self.ComuneId   = [[decoder decodeObjectForKey:@"ComuneId"] intValue];
+    self.FrazioneId = [[decoder decodeObjectForKey:@"FrazioneId"] intValue];
+    self.Civico     = [[decoder decodeObjectForKey:@"Civico"] intValue];
+    
+    self.Posizione = PGLocationCoordinate2DMake([[decoder decodeObjectForKey:@"Lat"] doubleValue], 
+                                                [[decoder decodeObjectForKey:@"Lon"] doubleValue]);
+  } 
+  return self;
+  
+}
+
+- (void) encodeWithCoder:(NSCoder *)coder {
+
+  [coder encodeObject:self.Zona forKey:@"Zona"];
+  [coder encodeObject:self.Regione forKey:@"Regione"];
+  [coder encodeObject:self.Provincia forKey:@"Provincia"];
+  [coder encodeObject:self.Comune forKey:@"Comune"];
+  [coder encodeObject:self.Frazione forKey:@"Frazione"];
+  [coder encodeObject:self.Indirizzo forKey:@"Indirizzo"];
+  
+  [coder encodeObject:[NSNumber numberWithInt:self.ZonaId] forKey:@"ZonaId"] ;
+  [coder encodeObject:[NSNumber numberWithInt:self.RegioneId] forKey:@"RegioneId"];
+  [coder encodeObject:[NSNumber numberWithInt:self.ProvinciaId] forKey:@"ProvinciaId"];
+  [coder encodeObject:[NSNumber numberWithInt:self.ComuneId] forKey:@"ComuneId"];
+  [coder encodeObject:[NSNumber numberWithInt:self.FrazioneId] forKey:@"FrazioneId"];
+  [coder encodeObject:[NSNumber numberWithInt:self.Civico] forKey:@"Civico"];
+  
+  [coder encodeObject:[NSNumber numberWithDouble:self.Posizione.latitude] forKey:@"Lat"];
+  [coder encodeObject:[NSNumber numberWithDouble:self.Posizione.longitude] forKey:@"Lon"];
+
+}
+
+
+- (void) SetRegione:(NSString*)Regione 
+       andProvincia:(NSString*)Provincia 
+          andComune:(NSString*)Comune 
+        andFrazione:(NSString*)Frazione
+       andIndirizzo:(NSString*)Indirizzo 
+          andCivico:(int)Civico 
+            andZona:(NSString*)Zona 
+       andPosizione:(CLLocationCoordinate2D)Posizione 
+          andZonaId:(int)ZonaId
+       andRegioneId:(int)RegioneId
+     andProvinciaId:(int)ProvinciaId
+        andComuneId:(int)ComuneId
+      andFrazioneId:(int)FrazioneId
+{
+  _Zona      = [Zona      retain];
+  _Regione   = [Regione   retain];
+  _Provincia = [Provincia retain];
+  _Comune    = [Comune    retain];
+  _Frazione  = [Frazione  retain];
+  _Indirizzo = [Indirizzo retain];
+  
+  _ZonaId      = ZonaId;
+  _RegioneId   = RegioneId;
+  _ProvinciaId = ProvinciaId;
+  _ComuneId    = ComuneId;
+  _FrazioneId  = FrazioneId;
+  
+  _Civico = Civico;
+  
+  _Posizione  = PGLocationCoordinate2DMake(Posizione.latitude, Posizione.longitude); 
+
+}
+
+- (NSString*) Descrizione {  
+  NSString *desc = [NSString string];
+  
+  if ( ![_Comune isEqualToString:[NSString string]] )
+    desc = [NSString stringWithFormat:@"%@", _Comune];
+
+  if (( ![_Provincia isEqualToString:[NSString string]] ) && ( ![_Comune isEqualToString:[NSString string]] ))
+    desc = [NSString stringWithFormat:@"%@ (%@)", desc, _Provincia];
+  else
+    desc = [NSString stringWithFormat:@"%@", _Provincia];
+    
+  if ( ![_Frazione isEqualToString:[NSString string]] )
+    desc = [NSString stringWithFormat:@"%@ di %@", _Frazione, desc]; 
+  
+  if ( ![_Indirizzo isEqualToString:[NSString string]] )
+    desc = [NSString stringWithFormat:@"%@, %@", _Indirizzo, desc];
+  
+  if ( _Civico > 0 )
+    desc = [NSString stringWithFormat:@"%d, %@", _Civico, desc]; 
+  
+  if ( [desc isEqualToString:[NSString string]] ) {
+    if ( ![_Regione isEqualToString:[NSString string]] )
+      desc = [NSString stringWithFormat:@"%@", _Regione];
+    else if ( ![_Zona isEqualToString:[NSString string]] )
+      desc = [NSString stringWithFormat:@"%@", _Zona];
+  }
+  
+  return desc;
+}
+
+- (NSString*) DescrizioneAC {
+  NSString *desc = [NSString string];
+  
+  if ( ![_Comune isEqualToString:[NSString string]] )
+    desc = [NSString stringWithFormat:@"%@", _Comune];
+  
+  if ( ![_Provincia isEqualToString:[NSString string]] )
+    desc = [NSString stringWithFormat:@"%@ (%@)", desc, _Provincia];
+  
+  if ( ![_Frazione isEqualToString:[NSString string]] )
+    desc = [NSString stringWithFormat:@"%@, %@", _Frazione, desc]; 
+  
+  if ( ![_Indirizzo isEqualToString:[NSString string]] )
+    desc = [NSString stringWithFormat:@"%@, %@", desc, _Indirizzo];
+  
+  if ( _Civico > 0 )
+    desc = [NSString stringWithFormat:@"%@, %d", desc, _Civico];
+  
+  if ( [desc isEqualToString:[NSString string]] ) {
+    if ( ![_Regione isEqualToString:[NSString string]] )   desc = [NSString stringWithFormat:@"%@", _Regione];
+    else if ( ![_Zona isEqualToString:[NSString string]] ) desc = [NSString stringWithFormat:@"%@", _Zona];
+  }
+  
+  return desc;
+}
+
+- (NSString*) DescrizioneShort:(int)Width usingFont:(UIFont*)Font {
+  NSString *str = [self DescrizioneAC];
+  
+  if ( [str sizeWithFont:Font].width <= Width ) return str;
+  
+  if ( ![_Indirizzo isEqualToString:[NSString string]] )
+    str = [NSString stringWithFormat:@"... %@", _Indirizzo]; 
+
+  if ( _Civico > 0 )
+    str = [NSString stringWithFormat:@"%@, %d", str, _Civico];
+  
+  return str;
+}
+
+- (void)dealloc {
+  [_Zona      release];
+  [_Regione   release];
+  [_Provincia release];
+  [_Comune    release];
+  [_Frazione  release];
+  [_Indirizzo release];
+  
+  [super dealloc];
+}
+
+@end

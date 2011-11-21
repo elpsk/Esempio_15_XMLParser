@@ -1,0 +1,41 @@
+//
+//  PGSvegliaGps.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 07/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+
+@protocol PGSvegliaGpsDelegate
+@optional
+- (void) NotificationAppeared:(id)Sveglia andStatus:(int)Val;
+@end
+
+@interface PGSvegliaGps : NSObject {
+  BOOL _isBackgroundSupported;
+  BOOL _AlreadyNotified;
+  
+  double _Distance;
+  NSString *_AudioFile;
+  CLLocationCoordinate2D _Destination;
+  NSString *_CustomText;
+  
+  id _Delegate;
+}
+
+@property (nonatomic, assign) id Delegate;
+
+@property (nonatomic, assign) BOOL AlreadyNotified;
+
+@property (nonatomic, assign) double Distance;
+@property (nonatomic, assign) NSString *AudioFile;
+@property (nonatomic, assign) NSString *CustomText;
+@property (nonatomic, assign) CLLocationCoordinate2D Destination;
+
+- (void) CheckLocation:(CLLocationCoordinate2D)GpsPosition andDest:(CLLocationCoordinate2D)DestPosition;
+- (void) StartSveglia;
+
+@end

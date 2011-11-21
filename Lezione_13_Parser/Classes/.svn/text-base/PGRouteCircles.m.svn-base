@@ -1,0 +1,121 @@
+//
+//  PGRouteCircles.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 29/04/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGRouteCircles.h"
+
+
+@implementation PGRouteCircles
+
+@synthesize StepIndex=m_StepIndex, BackgroundColor=m_BackgroundColor, ForegroundColor=m_ForegroundColor;
+@synthesize Coordinate=m_Coordinate;
+
+- (id) initWithIndex:(int)index backgroundColor:(UIColor*)bgColor foregroundColor:(UIColor*)fgColor andCoords:(CLLocationCoordinate2D)coords{
+  
+	if (self == [super init]) {
+		self.userInteractionEnabled = YES;
+    self.exclusiveTouch = NO;
+		self.multipleTouchEnabled = NO;
+    
+		self.backgroundColor = [UIColor clearColor];
+		self.layer.masksToBounds = NO;
+		self.frame = CGRectMake(0, 0, 23, 23);
+		self.clipsToBounds = NO;
+    
+    m_StepIndex       = index;
+    m_ForegroundColor = fgColor;
+    m_BackgroundColor = bgColor;
+    m_CirlceRadius    = (self.frame.size.width / 2) - 1;
+    m_Coordinate      = coords;
+  }
+	return self;
+}
+
+- (id) initWithDefaultValues:(int)index andCoords:(CLLocationCoordinate2D)coords {
+  self = [self initWithIndex:index backgroundColor:[UIColor blackColor] foregroundColor:[UIColor yellowColor] andCoords:coords];
+  return self;
+}
+
+- (void) drawRect:(CGRect)rect {
+
+  NSString *myText = [NSString stringWithFormat:@"%d", m_StepIndex];
+  
+	CGContextRef ctx = UIGraphicsGetCurrentContext();
+
+	CGContextBeginPath(ctx);
+  CGContextAddArc(ctx, 
+                  self.frame.size.width / 2, 
+                  self.frame.size.height / 2, 
+                  m_CirlceRadius, 
+                  0, 
+                  2 * M_PI, 
+                  1);
+  CGContextClosePath(ctx);
+
+  CGContextSetAllowsAntialiasing(ctx, YES);
+  CGContextSetAllowsFontSmoothing(ctx, YES);
+
+	CGContextSetFillColorWithColor(ctx, m_BackgroundColor.CGColor);
+	CGContextFillPath(ctx);
+	CGContextSetFillColorWithColor(ctx, m_ForegroundColor.CGColor);
+	CGContextFillPath(ctx);
+  
+  CGFloat size = 12;
+  UIFont *font = [UIFont fontWithName:@"Helvetica" size:size];
+  CGSize fontSize = [myText sizeWithFont:font];
+  
+  int SizeNumBased   = 0;
+  int HeightNumBased = 4;
+  if ( m_StepIndex  < 10 ) SizeNumBased = (fontSize.width / 2) + 5;
+  if ( m_StepIndex >= 10 && m_StepIndex < 20 ) SizeNumBased = (fontSize.width / 2) - 3;
+  if ( m_StepIndex >= 20 && m_StepIndex < 100 ) SizeNumBased = (fontSize.width / 2) - 2;
+  if ( m_StepIndex >= 100 ) SizeNumBased = (fontSize.width / 2) - 8;
+  
+  [myText drawInRect:CGRectMake(SizeNumBased, HeightNumBased, fontSize.width, fontSize.height) 
+            withFont:m_StepIndex >= 100 ? [UIFont fontWithName:@"Helvetica" size:11] : font];
+  
+//  [myText drawAtPoint:CGPointMake(SizeNumBased, HeightNumBased) 
+//             forWidth:size 
+//             withFont:font
+//          minFontSize:(size-3)
+//       actualFontSize:&size 
+//        lineBreakMode:UILineBreakModeCharacterWrap
+//   baselineAdjustment:UIBaselineAdjustmentAlignCenters];
+    
+}
+
+- (void) touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+  [m_Delegate RouteCirclesTouchBegan:self atStep:m_StepIndex];
+}
+- (void) touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
+  [m_Delegate RouteCirclesTouchMoved:self atStep:m_StepIndex];
+}
+- (void) touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
+  [m_Delegate RouteCirclesTouchEnded:self atStep:m_StepIndex];
+}
+- (void) touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
+  [m_Delegate RouteCirclesTouchCancel:self atStep:m_StepIndex];
+}
+
+- (void) dealloc {
+  
+  if (m_ForegroundColor) {
+    [m_ForegroundColor release];
+    m_ForegroundColor = nil;
+  }
+  
+  if (m_BackgroundColor) {
+    [m_BackgroundColor release];
+    m_BackgroundColor = nil;
+  }
+  
+  [super dealloc];
+  
+}
+
+@end
+

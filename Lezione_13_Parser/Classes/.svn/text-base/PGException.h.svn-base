@@ -1,0 +1,42 @@
+//
+//  PGException.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 14/04/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+/**
+ * Classe PGException, per la gestione delle eccezioni
+ */
+@interface PGException : NSException {
+  
+  /**
+   * Enum eccezioni
+   */  
+  enum {
+    PGExceptionTypeLbs = 0, /**< PGExceptionTypeLbs    */
+    PGExceptionTypeRoute,   /**< PGExceptionTypeRoute  */
+    PGExceptionTypeConfig   /**< PGExceptionTypeConfig */
+  } PGExceptionType;
+
+  int m_Code;
+}
+@property (nonatomic, readonly) int Code;
+@end
+
+@interface PGConfigException : PGException { }
++ (PGConfigException*) exceptionWithReason:(NSString *)Reason;
+@end
+
+@interface PGLbsException : PGException { }
++ (PGLbsException*) exceptionWithReason:(NSString *)Reason;
+@end
+
+
+@interface PGRouteException : PGException { }
+  + (PGRouteException*) exceptionWithCode:(int)Code;
+@end
+

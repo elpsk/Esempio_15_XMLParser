@@ -1,0 +1,68 @@
+//
+//  PGEngine.h
+//  PGIPHONE
+//
+//  Created by Giovanni Catapano on 02/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+#import "PGParams.h"
+#import "PGFormule.h"
+
+
+typedef enum {
+	PGEngineFunctWhere = 0,
+  PGEngineFunctBound,
+	PGEngineFunctCenter
+} PGEngineFunct;
+
+typedef enum {
+  PGEngineServerPG = 0,
+  PGEngineServerPB,
+  PGEngineServerTC
+} PGEngineServer;
+
+
+@class PGEngine;
+
+
+@protocol PGEngineDelegate <NSObject>
+  @optional
+  - (void) ItemsDidFinishLoading:(PGEngine*)Engine withResults:(NSArray*)Results;
+@end
+
+
+@interface PGEngine : NSObject {
+  id <PGEngineDelegate> _Delegate;
+  
+  PGParams *_Params;
+
+  PGEngineServer _Server;
+  PGEngineFunct _Funct;
+  
+  NSString *_What;
+  NSString *_Where;
+  CLLocationCoordinate2D _Center;
+  PGLocationBound _Bound;
+
+  int _MaxCount;
+}
+
+@property (nonatomic, assign) id Delegate;
+@property (nonatomic, retain) PGParams *Params;
+
+@property (nonatomic, assign) PGEngineServer Server;
+@property (nonatomic, assign) PGEngineFunct Funct;
+
+@property (nonatomic, readonly) int MaxCount;
+
+@property (nonatomic, retain) NSString *What;
+@property (nonatomic, retain) NSString *Where;
+@property (nonatomic, assign) CLLocationCoordinate2D Center;
+@property (nonatomic, assign) PGLocationBound Bound;
+
+- (void) Request:(NSString*)Options;
+
+@end

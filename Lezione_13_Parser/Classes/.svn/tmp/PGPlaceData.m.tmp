@@ -1,0 +1,49 @@
+//
+//  PGPlace.m
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 11/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGPlaceData.h"
+
+
+@implementation PGPlaceData
+@synthesize Name = m_Name;
+
+- (id) initWithParams:(NSString *) placeName addWeight:(int) placeWeight
+{
+	self = [super init];
+	
+	if (self != nil)
+	{
+		m_Name = [[NSString alloc] initWithString:placeName];
+		m_Weight = placeWeight;
+	}
+	
+	return self;
+}
+
+
+- (NSString *) getNamePlace
+{
+	return m_Name;
+}
+
+- (int) getWeight
+{
+	return m_Weight;
+}
+
+- (void) dealloc
+{
+	if (m_Name != nil)	
+	{
+		[m_Name release];
+		m_Name = nil;
+	}
+		
+	[super dealloc];
+}
+@end

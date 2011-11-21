@@ -1,0 +1,66 @@
+//
+//  PGAriaMeteo.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 06/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGAriaMeteo.h"
+
+
+@implementation PGDayPart
+
+@synthesize Id=m_Id, Type=m_Type, Value=m_Value, Temperature=m_Temperature, Rain=m_Rain, Wind=m_Wind, Text=m_Text, Description, FileName;
+
+- (NSString*) Description {
+  switch ( m_Id ) {
+    case 0: return @"Notte";
+    case 1: return @"Mattina";
+    case 2: return @"Pomeriggio";
+    case 3: return @"Sera";
+  }
+  return @"";
+}
+
+- (NSString*) FileName {
+  switch ( m_Type ) {
+    case PGAriaType:  return [NSString stringWithFormat:@"qa%d.png",  m_Value];
+    case PGMeteoType: return [NSString stringWithFormat:@"s%d_m.png", m_Value];
+  }
+  return @"";
+}
+
+- (void) dealloc {
+  if ( m_Text ) [m_Text release];
+  
+  [super dealloc];
+}
+
+@end
+
+
+@implementation PGDay
+
+@synthesize Date=m_Date, RangeTemperature=m_RangeTemperature, Value=m_Value;
+
+- (void) dealloc {
+  if ( m_Date ) [m_Date release];
+  
+  [super dealloc];
+}
+
+@end
+
+
+@implementation PGAriaMeteo
+
+@synthesize Id=m_Id, Part=m_Part, Location=m_Location, Position=m_Position;
+
+- (void) dealloc {
+  if ( m_Location ) [m_Location release];
+
+  [super dealloc];
+}
+
+@end

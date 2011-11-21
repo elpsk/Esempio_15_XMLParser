@@ -1,0 +1,67 @@
+//
+//  PGException.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 14/04/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGException.h"
+
+@implementation PGException
+@synthesize Code=m_Code;
+
+- (int) Code {
+  return [[self.userInfo objectForKey:@"Code"] intValue];
+}
+
+@end
+
+
+@implementation PGRouteException
+
++ (NSString*) returnHumanErrorFromCode:(int)Code 
+{
+  switch (Code) {
+    case 1: return @"Nessun parametro.";
+    case 2: return @"Xml non valido.";
+    case 3: return @"Parametri mancanti.";
+    case 4: return @"Coordinate errate.";
+    case 5: return @"Nessun percorso disponibile.";
+      
+    default: return @"Servizio routing non disponibile.";
+  }
+}
+
++ (PGRouteException*) exceptionWithCode:(int)Code 
+{
+  return [[[PGRouteException alloc] initWithName:@"PGRouteException" 
+                                         reason:[PGRouteException returnHumanErrorFromCode:Code] 
+                                       userInfo:[NSMutableDictionary dictionaryWithObject:[NSNumber numberWithInt:PGExceptionTypeRoute] forKey:@"Code"]]
+          autorelease];
+}
+
+@end
+
+
+@implementation PGLbsException
+
++ (PGLbsException*) exceptionWithReason:(NSString *)Reason {
+  return [[[PGLbsException alloc] initWithName:@"PGLbsException"
+                                        reason:Reason
+                                      userInfo:[NSMutableDictionary dictionaryWithObject:[NSNumber numberWithInt:PGExceptionTypeLbs] forKey:@"Code"]]
+          autorelease];
+}
+
+@end
+
+@implementation PGConfigException
+
++ (PGConfigException*) exceptionWithReason:(NSString *)Reason {
+  return [[[PGConfigException alloc] initWithName:@"PGConfigException"
+                                           reason:Reason
+                                         userInfo:[NSMutableDictionary dictionaryWithObject:[NSNumber numberWithInt:PGExceptionTypeConfig] forKey:@"Code"]]
+          autorelease];
+}
+
+@end

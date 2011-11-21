@@ -1,0 +1,166 @@
+//
+//  PGMap.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 08/10/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <CoreLocation/CoreLocation.h>
+
+#import "PGPoint.h"
+#import "PGRoute.h"
+#import "PGRouteParams.h"
+#import "PGParams.h"
+#import "PGRouteResults.h"
+#import "PGGps.h"
+#import "PGGpsPoint.h"
+#import "CloserMap.h"
+#import "CloserEventsDelegate.h"
+#import "PGParser.h"
+#import "PGReachability.h"
+#import "PGHttpWrapper.h"
+#import "PGGpsInfo.h"
+#import "PGPlace.h"
+#import "PGException.h"
+#import "PGCompass.h"
+
+
+@class PGMap;
+@class PGException;
+
+typedef enum {
+  PGTimerRoute = 0,
+  PGTimerAriaMeteo
+} PGTimerType;
+
+typedef enum {
+  PGEventTypeZoom = 0,
+  PGEventTypeMove
+} PGEventType;
+
+@protocol PGMapDelegate <NSObject>
+@optional
+  @property(nonatomic, readonly) UIInterfaceOrientation interfaceOrientation;
+
+  - (void) NetworkNoPresent:(PGMap*)Map;
+  - (void) MapBoundChanged:(PGMap*)Map withEvent:(NSNumber*)Type;
+  - (void) MessageError:(PGMap*)Map withException:(PGException*)Exception;
+  - (void) GpsInfoUpdated:(PGMap*)Map withInfo:(PGGpsInfo*)Info;
+
+@end
+
+@interface PGMap : CloserMap <CLLocationManagerDelegate, CloserEventsDelegate> {
+
+	id <PGMapDelegate, PGRouteDelegate> m_Delegate;
+  
+  enum {
+    GPStart = 0,
+    GPMove,
+    GPEnd
+  } GesturePhase;
+  
+	UIImageView *imgView;
+	UILabel     *copyRightLabel;
+  UIImageView *LogoView;
+	
+  
+  NSMutableArray *m_Points;
+  NSMutableArray *m_Circles;
+	
+	int lastRoutingReqId;
+	NSTimer *m_TimerRoute;
+  
+  int m_AriaMeteo, m_AMRequest;
+  NSMutableArray *m_AMPoints;
+  NSTimer *m_AMTimer;
+
+  UIInterfaceOrientation m_Orientation;
+	
+	NSOperationQueue	*m_Queue;
+
+	PGRoute         *m_Route;  
+	PGPoint         *m_CurrentPoint;
+  
+	PGGps           *m_Gps;
+  PGGpsPoint      *m_GpsPoint;
+  PGCompass       *m_Compass;
+  
+  PGParams        *m_Params;
+	
+  PGReachability  *m_Net_HostReach;
+	
+  PGPlace					*m_Autocomplete;
+	PGGeoResult			*m_PosizioneAttuale;
+}
+
+@property (nonatomic, retain) PGPoint *CurrentPoint;
+@property (readonly) PGParams *Params;
+@property (readonly) PGRoute *Route;
+@property (nonatomic, retain) PGPlace *Autocomplete;
+@property (nonatomic, retain) PGCompass *Compass;
+
+/*
+ * Metodi esposti dalla libreria non cancellare
+ */
+
+- (id) initWithFrame:(CGRect)rect andConfig:(PGParams*)params;
+- (id) initWithFrame:(CGRect)rect andConfig:(PGParams *)params andDelegate:(id)deleg;
+
+- (void) setCenterWith:(double)Lat AndLon:(double)lon;
+- (void) setCenterWith:(double)Lat AndLon:(double)lon andZoom:(float)z;
+
+- (void) setMapType:(int)mt;
+- (void) moveMapTo:(CLLocationCoordinate2D)coordinate withAnimation:(BOOL)animated;
+
+- (void) enableCompass:(BOOL)val;
+- (BOOL) isCompassSupported;
+- (void) enableGps:(BOOL)val;
+- (void) moveMapToGps;
+
+- (PGBound) getMapBounds;
+- (CGPoint) getPointPosition:(PGPoint*)point;
+- (CLLocationCoordinate2D) getMapCenter;
+
+- (float) getZoom;
+
+- (void) addPoint:(PGPoint*)view;
+- (void) addPoint:(PGPoint*)view withAnimation:(BOOL)Animate;
+- (void) removePointAt:(int)Tag;
+- (void) removePoints;
+- (void) showAllPoints;
+- (PGPoint*) getPointAt:(int)Tag;
+
+- (void) addRoute:(PGRoute*) aRoute;
+- (void) addRoute:(PGRoute*) aRoute withParams:(PGRouteParams*)par;
+- (void) clearRoute;
+- (PGRStep *) showNextStep;
+- (PGRStep *) showPrevStep;
+- (PGRStep *) showStepAt:(int)Index;
+
+- (void) ShowRouteCircles:(BOOL) show;
+- (void) ShowRouteCirclesAt:(int) idx;
+
+- (int) Geocode:(NSString*)Query withResult:(NSArray*)Result;
+
+- (void) ShowAriaMeteo:(int)Type;
+
+- (void) DrawPOI;
+- (void) RemovePOI;
+
+/***/
+
+- (float) getMaxMapMeters:(float)zoom;
+- (void) CheckVersionConfiguration:(NSData*)Data;
+- (void) SetCompass:(CLHeading*)Heading;
+- (void) AddGpsPoint:(CLLocation*)Coord;
+- (void) UpdateGpsPoint:(CLLocation*)Coord;
+- (void) removeFromSuperview;
+- (void) CreateRoute:(NSData*)Data;
+- (NSMutableArray*) GetAllSteps;
+- (void) ProtocolManager:(SEL)selector andObject:(id)Obj andProtocol:(Protocol*)protocol;
+- (int) OrientationDegree;
+- (void) ClearCurrentPoint;
+
+@end

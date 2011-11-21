@@ -1,0 +1,43 @@
+//
+//  PGRouteCircles.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 29/04/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
+#import <CoreLocation/CoreLocation.h>
+
+@class PGRouteCircles;
+
+@protocol PGRouteCirclesDelegate
+@optional
+- (void) RouteCirclesTouchBegan: (PGRouteCircles*)rc atStep:(int)step;
+- (void) RouteCirclesTouchMoved: (PGRouteCircles*)rc atStep:(int)step;
+- (void) RouteCirclesTouchEnded: (PGRouteCircles*)rc atStep:(int)step;
+- (void) RouteCirclesTouchCancel:(PGRouteCircles*)rc atStep:(int)step;
+@end
+
+@interface PGRouteCircles : UIView {
+
+  id <PGRouteCirclesDelegate> m_Delegate;
+
+  int     m_StepIndex;
+  int     m_CirlceRadius;
+  UIColor *m_BackgroundColor;
+  UIColor *m_ForegroundColor;
+  CLLocationCoordinate2D m_Coordinate;
+  
+}
+
+@property (readonly) int StepIndex;
+@property (readonly) UIColor *BackgroundColor;
+@property (readonly) UIColor *ForegroundColor;
+@property (readonly) CLLocationCoordinate2D Coordinate;
+
+- (id) initWithDefaultValues:(int)index andCoords:(CLLocationCoordinate2D)coords;
+- (id) initWithIndex:(int)index backgroundColor:(UIColor*)bgColor foregroundColor:(UIColor*)fgColor andCoords:(CLLocationCoordinate2D)coords;
+
+@end

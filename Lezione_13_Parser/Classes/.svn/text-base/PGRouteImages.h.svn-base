@@ -1,0 +1,59 @@
+//
+//  RouteImages.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 16/11/10.
+//  Copyright 2010 Cutaway SRL. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+/* Rotazione Incroci */
+
+/** PGRouteImagesType
+ *  Enum con le immagini del percorso di default\n
+ *  - Rotonda\n
+ *  - Autostrada
+ */
+typedef enum {
+  PGRouteImagesTypeRotonda = 0,   /**< PGRouteImagesTypeRotonda */
+  PGRouteImagesTypeAutostradaIn,  /**< PGRouteImagesTypeAutostradaIn */
+  PGRouteImagesTypeAutostradaOut, /**< PGRouteImagesTypeAutostradaOut */
+  PGRouteImagesTypeMetro,         /**< PGRouteImagesTypeMetro */
+  PGRouteImagesTypeBus,           /**< PGRouteImagesTypeBus */
+  PGRouteImagesTypePiedi,         /**< PGRouteImagesTypePiedi */
+  PGRouteImagesTypeTram           /**< PGRouteImagesTypeTram */
+} PGRouteImagesType;
+
+/**
+ * Classe statica PGRouteImages. Ritorna le icone ruotate di un percorso.
+ */
+@interface PGRouteImages : NSObject {
+
+}
+
+/**
+ * Ritorna l'url delle icone di default
+ * @param PGRouteImagesType
+ * @return NSString
+ * @see PGRouteImagesType
+ */
++ (NSString*) GetRouteImagesUrlDefault:(PGRouteImagesType)type;
+
+/**
+ * Ritorna l'url delle icone passato come parametro CROSS e TURN
+ * @param (int)cross
+ * @param (int)turn
+ * @return NSString
+ */
++ (NSString*) GetRouteImagesUrlFromCross:(int)cross andTurn:(int)turn;
+
+/**
+ * Ritorna l'url delle icone ATM
+ * @param (int)type
+ * @return NSString
+ */
++ (NSString*) GetRouteATMImages:(int)type;
+
+
+@end

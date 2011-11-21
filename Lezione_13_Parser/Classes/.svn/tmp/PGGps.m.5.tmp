@@ -1,0 +1,157 @@
+//
+//  PGGps.m
+//  PGIPHONE
+//
+//  Created by Seat Team PGNAV on 09/11/10.
+//  Copyright 2010 __MyCompanyName__. All rights reserved.
+//
+
+#import "PGGps.h"
+#import "PGMap.h"
+#import "PGParser.h"
+#import "PGFormule.h"
+
+
+@interface PGGps (internals)
+  - (void) locationManager:(CLLocationManager*)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *) oldLocation;
+  - (void) locationManager:(CLLocationManager*)manager didFailWithError:(NSError *) error;
+  - (void) locationManager:(CLLocationManager*)manager didUpdateHeading:(CLHeading*)newHeading;
+  - (void) GpsInfo:(NSData*)Data;
+@end
+
+@implementation PGGps
+
+@synthesize Location=m_Location, Heading=m_Heading, CompassEnabled=m_CompassEnabled;
+
+
+- (id) initWithReceiver:(id)Receiver {
+  self = [super init];
+  if ( !self ) return nil;
+
+  m_Receiver = Receiver;
+  
+  m_Manager = [[CLLocationManager alloc] init];
+  m_Manager.delegate = self;
+  m_Manager.desiredAccuracy = kCLLocationAccuracyBest;
+  m_Manager.distanceFilter  = kCLDistanceFilterNone;
+  m_Manager.headingFilter   = kCLDistanceFilterNone;
+
+  m_Location = [m_Manager.location retain];
+  
+  m_Heading     = nil;
+
+  m_LastReverse = nil;
+  
+  m_Info = [[PGGpsInfo alloc] init];
+  
+  m_CompassEnabled = NO;
+  
+  return self;
+}
+
+- (void) EnableLocationService:(BOOL)Enable {
+  
+  if ( Enable ) {
+    [m_Manager startUpdatingLocation];
+    if ( m_Location )
+      [m_Receiver performSelectorOnMainThread:@selector(AddGpsPoint:) withObject:m_Location waitUntilDone:NO];
+  }
+  else {
+    [m_Manager stopUpdatingLocation];
+    [m_Receiver performSelectorOnMainThread:@selector(RemoveGpsPoint) withObject:nil waitUntilDone:NO];
+  }
+}
+
+- (void) EnableHeadingService:(BOOL)Enable {
+  m_CompassEnabled = Enable;
+  if ( Enable ) [m_Manager startUpdatingHeading];
+  else {
+    [m_Manager stopUpdatingHeading];
+    [m_Receiver performSelectorOnMainThread:@selector(SetCompass:) withObject:nil waitUntilDone:NO];
+  }
+}
+
+- (void) locationManager:(CLLocationManager*)manager didUpdateToLocation:(CLLocation*)newLocation fromLocation:(CLLocation*)oldLocation {  
+  if ( !oldLocation ||
+       newLocation.coordinate.latitude  != oldLocation.coordinate.latitude  ||
+       newLocation.coordinate.longitude != oldLocation.coordinate.longitude ||
+       newLocation.horizontalAccuracy   != oldLocation.horizontalAccuracy ) {
+    if ( m_Location ) [m_Location release];
+    m_Location = [newLocation retain];
+    
+    if ( !oldLocation ) [m_Receiver performSelectorOnMainThread:@selector(AddGpsPoint:) withObject:m_Location waitUntilDone:NO];
+    else [m_Receiver performSelectorOnMainThread:@selector(UpdateGpsPoint:) withObject:m_Location waitUntilDone:NO];
+
+    if ( m_Location ) {
+      if ( !m_LastReverse || [[NSDate date] timeIntervalSinceDate:m_LastReverse] > 5 ) {
+        NSString *query = [NSString stringWithFormat:[((PGMap*)m_Receiver).Params.Servers objectAtIndex:PGServerReverse],
+                           m_Location.coordinate.latitude,
+                           m_Location.coordinate.longitude];
+        
+        NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+        [dict setObject:NSStringFromSelector(@selector(GpsInfo:)) forKey:@"selector"];
+        [dict setObject:query forKey:@"query"];
+        
+        PGHttpWrapper *http = [[[PGHttpWrapper alloc] initWithTarget:self] autorelease];
+        [http performSelectorOnMainThread:@selector(RequestData:) withObject:dict waitUntilDone:NO];
+      }
+      else [self GpsInfo:nil];
+      
+      if ( m_LastReverse ) [m_LastReverse release];
+      m_LastReverse = [[NSDate date] retain];
+    }
+  }
+}
+
+- (void)locationManager:(CLLocationManager*)manager didUpdateHeading:(CLHeading*)newHeading {
+  if ( !newHeading ) return;
+  if ( m_Heading && m_Heading.magneticHeading == newHeading.magneticHeading ) return;
+
+  if ( m_Heading ) [m_Heading release];
+  m_Heading = [newHeading retain];
+  
+  [m_Receiver performSelectorOnMainThread:@selector(SetCompass:) withObject:newHeading waitUntilDone:NO];
+}
+
+- (void) locationManager:(CLLocationManager*)manager didFailWithError:(NSError*)error  { }
+
+- (void) GpsInfo:(NSData*)Data {
+  NSString *xml = nil;
+  PGGeoResult *geo = nil;
+  
+  @try {
+    if ( Data ) {
+      xml =[[NSString alloc] initWithData:Data encoding:NSUTF8StringEncoding];
+      geo = [[PGGeoResult alloc] init];
+      [PGParser ReverseParser:geo inputXml:xml];
+      m_Info.Location = geo;
+    }
+    
+    m_Info.Speed.MpS = m_Location.speed;
+    
+    [m_Receiver ProtocolManager:@selector(GpsInfoUpdated:withInfo:) andObject:m_Info andProtocol:@protocol(PGMapDelegate)];
+  }
+  @catch (PGLbsException *e) 
+  {
+    [m_Receiver ProtocolManager:@selector(MessageError:withException:) andObject:e andProtocol:@protocol(PGMapDelegate)];
+  }
+  @finally {
+    if ( xml ) [xml release];
+    if ( geo ) [geo release];
+  }
+}
+
+- (void)dealloc {
+  if ( m_Manager  )	[m_Manager  release];
+  if ( m_Location ) [m_Location release];
+  if ( m_Heading  ) [m_Heading release];
+
+  if ( m_LastReverse ) [m_LastReverse release];
+  
+  if ( m_Info ) [m_Info release];
+  
+  [super dealloc];
+}
+
+
+@end

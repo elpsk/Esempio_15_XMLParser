@@ -1,0 +1,48 @@
+//
+//  Result.h
+//  tc
+//
+//  Created by Gianluca Folloni on 04/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+
+
+enum {
+  PGGeoOutCodeOk = 0,
+  PGGeoOutCodeNo,
+  PGGeoOutCodeLocotions,
+  PGGeoOutCodeStreets,
+  PGGeoOutCodeGps
+} PGGeoOutCode;
+
+
+@interface PGGeoResult : NSObject <NSCopying> {
+  NSString *m_Zona;
+  NSString *m_Regione;
+  NSString *m_Provincia;
+  NSString *m_Comune;
+  NSString *m_Frazione;
+  NSString *m_Indirizzo;
+  
+  int m_Civico;
+  
+  CLLocationCoordinate2D m_Posizione;  
+}
+
+@property (nonatomic, retain) NSString *Zona;
+@property (nonatomic, retain) NSString *Regione;
+@property (nonatomic, retain) NSString *Provincia;
+@property (nonatomic, retain) NSString *Comune;
+@property (nonatomic, retain) NSString *Frazione;
+@property (nonatomic, retain) NSString *Indirizzo;
+
+@property (nonatomic, assign) int Civico;
+
+@property (nonatomic, assign) CLLocationCoordinate2D Posizione;
+
+- (NSString*) Descrizione;
+
+@end

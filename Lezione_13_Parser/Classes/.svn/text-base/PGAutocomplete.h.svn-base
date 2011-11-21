@@ -1,0 +1,40 @@
+//
+//  PGAutocomplete.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 20/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "PGAutocompleteAlgoritm.h"
+#import "PGParams.h"
+
+
+@class PGAutocomplete;
+
+@protocol PGAutocompleteDelegate <NSObject>
+
+@required
+  - (void) GetAutocompleteResults:(NSArray*)Array;
+
+@end
+
+
+@interface PGAutocomplete : NSOperation {
+  PGLocT *_Towns, *_Locations;
+  int _NTowns, _NLocations;
+  
+  PGParams *_Params;
+  
+  NSTimer *_TimerLbs;
+  
+  id<PGAutocompleteDelegate> _Delegate;
+}
+
+@property (nonatomic, assign) id<PGAutocompleteDelegate> Delegate;
+
+- (id) initWithConfiguration:(PGParams*)Params;
+- (void) Autocomplete:(NSString*)String;
+
+@end

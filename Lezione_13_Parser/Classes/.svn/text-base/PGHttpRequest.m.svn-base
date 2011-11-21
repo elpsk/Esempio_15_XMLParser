@@ -1,0 +1,22 @@
+//
+//  HttpRequest.m
+//  tc
+//
+//  Created by Gianluca Folloni on 02/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import "PGHttpRequest.h"
+#import "PGConfig.h"
+
+
+@implementation PGHttpRequest
+
++ (NSString*) GetDataAsString:(NSString*)Url {
+  NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:Url]];
+  NSData *response = [NSURLConnection sendSynchronousRequest:request returningResponse:nil error:nil];
+  NSString *get = [[NSString alloc] initWithData:response encoding:NSUTF8StringEncoding];
+  return [get autorelease];
+}
+
+@end

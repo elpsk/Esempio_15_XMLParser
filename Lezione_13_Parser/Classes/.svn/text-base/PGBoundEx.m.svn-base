@@ -1,0 +1,57 @@
+//
+//  PGBound.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 30/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGBoundEx.h"
+
+
+@implementation PGBoundEx
+
+@synthesize Top=m_Top, Left=m_Left, Bottom=m_Bottom, Right=m_Right;
+
+- (id) InitWithBound:(PGBound)Bound {
+  self = [super init];
+  if ( !self ) return nil;
+  
+  m_Top    = Bound.top;
+  m_Left   = Bound.left;
+  m_Bottom = Bound.bottom;
+  m_Right  = Bound.right;
+  
+  return self;
+}
+
++ (PGBound) PgBoundFromCGRect:(CGRect)Bound {
+  return PGBoundMake(Bound.origin.y, Bound.origin.x, Bound.origin.y + Bound.size.height, Bound.origin.x + Bound.size.width);
+}
+
+- (void) Increase:(float)Value {
+  m_Top    += Value;
+  m_Left   -= Value;
+  m_Bottom -= Value;
+  m_Right  += Value;
+}
+
+/**
+ *	Metodo che verifica la validità del Bound
+ *  @param PGBound Bound da controllare
+ *  @return YES se il bound è valido
+ */
++ (BOOL) CheckBound:(PGBound)Bound
+{
+	return !(Bound.top == 0 && Bound.bottom == 0 && Bound.right == 0 && Bound.left == 0);
+}
+
+- (BOOL) Excluded:(PGBound)Bound {
+  return (Bound.left > m_Right || m_Left > Bound.right || Bound.top < m_Bottom || m_Top < Bound.bottom);
+}
+
+- (BOOL) Included:(PGBound)Bound {
+  return (m_Top < Bound.top && m_Left > Bound.left && m_Bottom > Bound.bottom && m_Right < Bound.right);
+}
+
+@end

@@ -1,0 +1,41 @@
+//
+//  PGGps.h
+//  PGIPHONE
+//
+//  Created by Seat Team PGNAV on 09/11/10.
+//  Copyright 2010 __MyCompanyName__. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h> 
+#import <CoreLocation/CLLocationManagerDelegate.h>
+
+#import "PGGpsInfo.h"
+#import "PGSvegliaGps.h"
+
+@interface PGGps : NSObject <CLLocationManagerDelegate> {
+	id m_Receiver;
+
+	CLLocationManager *m_Manager;
+  CLLocation        *m_Location;
+  CLHeading         *m_Heading;
+
+  NSDate    *m_LastReverse;
+  PGGpsInfo *m_Info;
+  
+  BOOL m_CompassEnabled;
+  
+  PGSvegliaGps *_SvegliaGps;
+}
+
+@property (readonly) CLLocation *Location;
+@property (readonly) CLHeading  *Heading;
+@property (readonly) BOOL CompassEnabled;
+
+@property (nonatomic, retain) PGSvegliaGps *SvegliaGps;
+
+- (id) initWithReceiver:(id)Receiver;
+- (void) EnableLocationService:(BOOL)Enable;
+- (void) EnableHeadingService:(BOOL)Enable;
+
+@end

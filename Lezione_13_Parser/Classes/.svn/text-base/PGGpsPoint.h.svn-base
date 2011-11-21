@@ -1,0 +1,25 @@
+//
+//  PGGpsPoint.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 04/04/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "PGPoint.h"
+#import "PGCircle.h"
+#import "PGGps.h"
+
+
+@interface PGGpsPoint : PGPoint <PGCircleDelegate> {
+  PGGps         *m_Gps;
+  PGCircle      *m_Circle;
+}
+
+@property (readonly) PGCircle *Circle;
+
+- (id) initWithCoord:(CLLocation*)Coord inView:(UIView*)Delegate withAccuracy:(float)Accuracy andZoom:(float)Zoom withGps:(PGGps*)Gps;
+- (void) setHidden:(BOOL)Value;
+
+@end

@@ -1,0 +1,1250 @@
+//
+//  PGMap.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 08/10/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import <QuartzCore/QuartzCore.h>
+#include <stdlib.h> 
+#include <math.h>
+
+#import "PGMap.h"
+#import "PGGps.h"
+#import "PGRouteParams.h"
+#import "PGFormule.h"
+#import "CloserParams.h"
+#import "CloserZRange.h"
+#import "PGDevice.h"
+#import "PGCache.h"
+#import "PGStreetView.h"
+#import "PGRoute.h"
+#import "PGHttpRequest.h"
+#import "PGConfig.h"
+#import "PGBoundEx.h"
+#import "PGException.h"
+#import "PGRStep.h"
+#import "PGRouteCircles.h"
+#import "PGAriaMeteo.h"
+#import "PGAriaMeteoPoint.h"
+#import "PGPOIParser.h"
+#import "PGPoi.h"
+#import "PGPointPlaceholder.h"
+
+
+/**
+ *  Internals Methods.
+ */
+@interface PGMap (Internals)
+  - (void) restartTimer:(int)Type;
+  - (BOOL) isBoundAllowed:(PGBound)Bound withType:(PGMapType)Type;
+  - (void) onMapMove:(CloserMap*)map;
+  - (void) onMapZoom:(CloserMap*)map;
+  - (void) onMapRotate:(CloserMap *)map;
+  - (void) onMapMoveEnd;
+  - (void) onMapZoomEnd;
+  - (void) onMapRotateEnd;
+  - (void) onMapEventEnd:(PGEventType)EventType;
+  - (void) updateRoute:(id)RoutingReqId;
+  - (void) DrawRoute:(NSArray*)Points;
+  - (void) RefreshRoute:(PGEventType)EventType;
+  - (void) CheckNetworkAval;
+  - (void) getRouteCenter:(CLLocationCoordinate2D *) pCenterOut AndZoom: (int *) pZoomOut;
+  - (PGBoundEx*) getMapUtmBounds;
+  - (void) ClearMap;
+  - (void) RemoveGpsPoint;
+  - (void) ShowCopyrightLabel:(int)Type;
+  - (void) AnimateDropPoints:(PGPoint*)Point;
+  - (void) ComputeBound:(PGBound)Bound andCenter:(CLLocationCoordinate2D*)Center andZoom:(int*)Zoom;
+  - (CGPoint) getPosition;
+  - (void) initAddRoute;
+  - (void) HideAriaMeteo;
+  - (void) UpdateAriaMeteo:(id)AMRequest;
+  - (void) AddAriaMeteoPoints:(NSData*)Data withRequestId:(id)RequestId;
+  - (void) RefreshAriaMeteo;
+  - (void) RemovePoint:(PGPoint*)Point;
+@end
+
+/**
+ *  PGMap Classe per l'init della mappa su UIView.
+ */
+@implementation PGMap
+
+@synthesize CurrentPoint=m_CurrentPoint, Params=m_Params, Autocomplete=m_Autocomplete, Route=m_Route, Compass=m_Compass;
+
+const int InvalidId = -1;
+
+#pragma mark -
+#pragma mark INIT
+#pragma mark -
+
+/**
+ * Metodo per inizializzare la mappa con i parametri personalizzati e il delegate nel caso si voglia utilizzare
+ * il protocollo PGMapDelegate
+ * @param (CGRect)frame è il contenitore della mappa.
+ * @param (PGParams*)params sono i parametri di init.
+ * @param (id)deleg il delegate da passare alla mappa
+ * @return self
+ */
+- (id) initWithFrame:(CGRect)rect andConfig:(PGParams*)params andDelegate:(id)deleg
+{  
+  [self initWithFrame:rect andConfig:params];
+	if (deleg != nil) m_Delegate = deleg;
+	return self;
+}
+
+/**
+ * Metodo per inizializzare la mappa con i parametri personalizzati
+ * @param (CGRect)frame è il contenitore della mappa.
+ * @param (PGParams*)params sono i parametri di init.
+ * @return self
+ */
+- (id) initWithFrame:(CGRect)rect andConfig:(PGParams*)params {
+
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+  // CHECK NETWORK STATUS
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleNetworkChange:) name:kReachabilityChangedNotification object:nil];
+	m_Net_HostReach = [[PGReachability reachabilityForInternetConnection] retain];
+	[m_Net_HostReach startNotifier];
+  [self CheckNetworkAval];
+  
+  @try {
+    // Configurazione modalità Mappa    
+    
+		NSUserDefaults *user = [NSUserDefaults standardUserDefaults];
+    NSString *xml = [user stringForKey:@"PgMapConfig"];
+    if ( !xml ) {
+      NSError *err = nil;
+      NSString *filename = [PGConfig GetBundleFile:@"PgMapConfig" ofType:@"xml"];
+      xml = [NSString stringWithContentsOfFile:filename encoding:NSUTF8StringEncoding error:&err];
+      if ( err ) {
+        NSLog(@"%@: %@", filename, [err localizedDescription]);
+        return nil;
+      }
+      [user setObject:xml forKey:@"PgMapConfig"];
+    }
+
+    m_Params = [params retain];
+    [PGParser MapConfigParser:m_Params         inputXml:xml];
+    [PGParser MapBoundsParser:m_Params.Bounds  inputXml:xml];
+    [PGParser MapServerParser:m_Params.Servers inputXml:xml];
+    [PGParser MapImagesParser:m_Params.Images  inputXml:xml];
+  }
+  @catch ( NSException *e ) {
+    return nil;
+  }
+
+  /***********************************************************************************************
+   *
+   * Fare in blocco perchè incide su tutti i successivi calcoli di posizionamento degli oggetti 
+   * 
+   *  1. Setto il frame maggiorato di una grandezza costante (MapIncrement)
+   *  2. Centro la mappa rispetto alla grandezza della superview
+   *  3. Setto il boumnd della mappa rispetto alla posizione originale della superviews
+   *
+   * NON SERVE PIU' PERCHE' ABBIAMO PRESO POSSESSO DEL super.closer E IL BOUND E' LA NOSTRA VISTA
+   *
+   ***********************************************************************************************/
+
+  if ( [PGDevice GetPlatformType] == UIDevice3GiPhone ) m_Params.MapIncr = 1,5;
+	if ( [PGDevice GetPlatformType] == UIDevice1GiPad   ) m_Params.MapIncr = 2;
+
+  self = [super initWithFrame:rect andParams:m_Params];
+  if ( !self ) return nil;
+  /***/
+
+ 	[super setClipsToBounds:m_Params.ToClip];
+	super.delegate = self;
+  
+  self.multipleTouchEnabled = YES;
+	[self becomeFirstResponder];
+  
+  // Init della Label per il copyright
+	copyRightLabel = [[UILabel alloc] init];
+	[copyRightLabel setBackgroundColor:[UIColor clearColor]];
+	copyRightLabel.textAlignment = UITextAlignmentRight;  
+  
+  LogoView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"PgLib.bundle/logo_tcol.gif"]];
+  
+  [self setMapType:m_Params.mapType];
+
+  // NB: la dimensione della griglia NON E' quanto la dimensione della mappa ma quanto la griglia stessa!
+  imgView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:[PGDevice GetModelImage]]];
+	[imgView setFrame:CGRectMake(0, 0, imgView.frame.size.width, imgView.frame.size.height)];
+	[imgView setCenter:CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2)];		
+  
+  [self addSubview:imgView];
+	[self sendSubviewToBack:imgView];
+  
+  m_Gps = [[PGGps alloc] initWithReceiver:self];
+  m_GpsPoint = [[PGGpsPoint alloc] initWithCoord:m_Gps.Location inView:self withAccuracy:m_Gps.Location.horizontalAccuracy andZoom:[super zoom] withGps:m_Gps];
+  m_GpsPoint.hidden = YES;
+  [self enableGps:YES];
+  
+  [super addPlaceHolder:m_GpsPoint.Circle :m_Gps.Location.coordinate :CGPointMake(0.5, 0.5)];
+  [super addPoint:(UIView*)m_GpsPoint :m_GpsPoint.Position :m_GpsPoint.Anchor];
+  [super bringSubviewToFront:m_GpsPoint];
+  
+  m_Points = [[NSMutableArray alloc] init];
+
+  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+  [dict setObject:NSStringFromSelector(@selector(CheckVersionConfiguration:)) forKey:@"selector"];
+  [dict setObject:[PGConfig GetKeyAsUrl:@"PgMapConfig" ofFile:@"PGConfig"] forKey:@"query"];
+  
+  PGHttpWrapper *http = [[[PGHttpWrapper alloc] initWithTarget:self] autorelease];
+  [http performSelectorOnMainThread:@selector(RequestData:) withObject:dict waitUntilDone:NO];
+  
+  m_Delegate    = nil;
+  m_Orientation = InvalidId;
+	
+	m_Queue = [[NSOperationQueue alloc] init];
+
+  m_Autocomplete = [[PGAutocomplete alloc] initWithConfiguration:m_Params];
+  [m_Queue addOperation:m_Autocomplete];
+	
+	m_PosizioneAttuale = [[PGGeoResult alloc] init];
+  
+  m_AriaMeteo = PGNoneType;
+  m_AMPoints = [[NSMutableArray alloc] init];
+  
+  m_TimerZoom = m_TimerMove = m_TimerRotate = nil;
+  
+  [pool drain];
+	
+  return self;
+}
+
+- (void) layoutSubviews {
+  if ( m_Delegate && [m_Delegate interfaceOrientation] != m_Orientation ) {
+    if ( m_Gps.CompassEnabled ) [self enableCompass:NO];
+    m_Orientation = [m_Delegate interfaceOrientation];
+    [super setAngle:0 withAnimation:YES];
+  }
+
+  if ( m_Gps.CompassEnabled || [super angle] != 0 ) return;
+  
+  CLLocationCoordinate2D centro = [super mapCenter];
+  
+  CGRect  f = CGRectMake(self.frame.origin.x, self.frame.origin.y, self.frame.size.width * m_Params.MapIncr, self.frame.size.height * m_Params.MapIncr);
+  [super.closer setFrame:f];
+  [super.closerOverlay setFrame:f];
+  [super.closer setCenter:CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2)];
+
+  [self moveMapTo:centro withAnimation:YES];
+  [self ShowCopyrightLabel:super.mapType];
+}
+
+- (void)removeFromSuperview {
+  [self enableGps:NO];
+  [self removePoints];
+  [self clearRoute];
+  
+  [super removeFromSuperview];
+}
+
+- (void) CheckNetworkAval {
+  NetworkStatus status = [m_Net_HostReach currentReachabilityStatus];	
+	if (status == NotReachable) [self ProtocolManager:@selector(NetworkNoPresent:) andObject:nil andProtocol:@protocol(PGMapDelegate)];
+}
+
+- (void) CheckVersionConfiguration:(NSData*)Data {
+  NSString *xml    = nil;
+  PGParams *params = nil;
+  
+  @try {
+    xml = [[NSString alloc] initWithData:Data encoding:NSUTF8StringEncoding];
+    
+    params = [[PGParams alloc] init];
+    [PGParser MapConfigParser:params inputXml:xml];
+    [PGParser MapBoundsParser:params.Bounds inputXml:xml];
+    [PGParser MapServerParser:params.Servers inputXml:xml];
+    
+    if ( [m_Params.Version floatValue] < [params.Version floatValue] ) {
+      NSUserDefaults *user = [NSUserDefaults standardUserDefaults];
+      [user setObject:xml forKey:@"PgMapConfig"];
+      
+      [m_Params.Bounds removeAllObjects];
+      [m_Params.Bounds addObjectsFromArray:params.Bounds];
+      
+      [m_Params.Servers removeAllObjects];
+      [m_Params.Servers addObjectsFromArray:params.Servers];
+      
+      m_Params.ToClip  = params.ToClip;
+      m_Params.PointsForRegions = params.PointsForRegions;
+    }
+  }
+  @catch ( PGConfigException *e ) {
+    [self ProtocolManager:@selector(MessageError:withException:) andObject:e andProtocol:@protocol(PGMapDelegate)];
+  }
+  @finally {
+    if ( xml    ) [xml release];
+    if ( params ) [params release];
+  }
+}
+
+#pragma mark -
+#pragma mark PROPERTY
+#pragma mark -
+
+- (void) setCompass:(PGCompass*)compass {
+  if ( m_Compass ) {
+    [m_Compass removeFromSuperview];
+    [m_Compass release];
+  }
+  
+  m_Compass = [compass retain];
+  [self addSubview:m_Compass];
+  [self bringSubviewToFront:m_Compass];
+}
+
+- (void) setCurrentPoint:(PGPoint*)Point {
+  if ( m_CurrentPoint ) [m_CurrentPoint release];
+  m_CurrentPoint = [Point retain];
+  [super bringPointToFront:m_CurrentPoint];
+}
+
+#pragma mark -
+#pragma mark GPS_POSITION_AND_ANIMATION
+#pragma mark -
+
+/**
+ * Metodo per disegnare un cerchio su mappa
+ * @param (PGCircle*)pCircle classe PGCircle
+ */
+- (void) enableGps:(BOOL) val {
+  [m_Gps EnableLocationService:val];
+}
+
+- (void) AddGpsPoint:(CLLocation*)Coord {
+  if ( !m_GpsPoint || !Coord ) return;
+  m_GpsPoint.hidden = NO;
+  [self UpdateGpsPoint:Coord];
+  [super moveMapTo:Coord.coordinate withAnimation:YES];
+}
+
+- (void) UpdateGpsPoint:(CLLocation*)Coord {
+  if ( m_GpsPoint && m_GpsPoint.hidden ) return;
+  [self setPoint:m_GpsPoint.Circle :Coord.coordinate];
+	[m_GpsPoint.Circle setRadiusInMeters:Coord.horizontalAccuracy];
+	[self setPoint:m_GpsPoint :Coord.coordinate];
+}
+
+- (void) RemoveGpsPoint {
+  if ( !m_GpsPoint ) return;
+  m_GpsPoint.hidden = YES;
+}
+
+- (void) moveMapToGps {
+  [self moveMapTo:m_Gps.Location.coordinate withAnimation:YES];
+}
+
+#pragma mark -
+#pragma mark COMPASS_MANAGER
+#pragma mark -
+
+- (BOOL) isCompassSupported {
+  return [PGDevice IsCompassSupported];
+}
+
+/**
+ * Attiva la bussola automatica
+ * @param (BOOL)val ON/OFF
+ */
+- (void) enableCompass:(BOOL) val {
+  [m_Gps EnableHeadingService:val];
+  
+  if ( m_Compass ) m_Compass.hidden = !val;
+  
+  [m_GpsPoint.Circle setRadiusInMeters:m_Gps.Location.horizontalAccuracy];
+  
+  if ( !val ) m_Orientation = InvalidId;
+}
+
+- (void) SetCompass:(CLHeading*)Heading {
+  int od = [self OrientationDegree];
+  double mh = (Heading != nil) ? Heading.magneticHeading : 0;
+	[super setAngle:-mh+od withAnimation:YES];
+  
+  if ( m_Compass ) [m_Compass setAngle:-mh+od];
+}
+
+// Fa apparire il messaggio per la calibrazione della bussola. Il famoso OTTO.
+// dovrebbe andare...
+- (BOOL) locationManagerShouldDisplayHeadingCalibration : (CLLocationManager *)manager {
+  return YES;
+}
+
+#pragma mark -
+#pragma mark DELEGATE
+#pragma mark -
+
+- (int) OrientationDegree {
+  if ( !m_Delegate ) return 0;
+  
+  switch ( m_Delegate.interfaceOrientation ) {
+    case UIInterfaceOrientationPortrait:           return 0;
+    case UIInterfaceOrientationPortraitUpsideDown: return 180;
+    case UIInterfaceOrientationLandscapeLeft:      return 90;
+    case UIInterfaceOrientationLandscapeRight:     return 270;
+    default: return 0;
+  }
+}
+
+
+#pragma mark -
+#pragma mark MAP_HANDLER
+#pragma mark -
+
+-(BOOL) handleMapChange:(CloserMap*)m {
+	return YES;
+}
+
+-(BOOL) handleMapPinch:(CloserMap*)m {
+  if ( super.lastGestureInfo.phase == GPStart ) [self ClearMap];
+  else if ( super.lastGestureInfo.phase == GPEnd ) {}
+  
+	if ( super.lastGestureInfo.scale <= 1.0 ) return YES;
+  
+//  [self RemovePOI];
+//  if ( [self getZoom] <= 0 && [self isBoundAllowed:[self getMapBounds] withType:super.mapType] ) {
+//    [self DrawPOI];
+//  }
+  
+  return [self isBoundAllowed:[self getMapBounds] withType:super.mapType];
+}
+
+-(BOOL) handleMapTap:(CloserMap*)m {
+  if ( m_CurrentPoint ) {
+    PGPointTouch touch = [m_CurrentPoint InsideTouch:super.lastGestureInfo.position];
+    if ( touch == PGPointTouchButton )  return YES;
+  }
+  [m_CurrentPoint removeCallout:YES];
+	return YES;
+}
+
+-(BOOL) handleMapDoubleTap:(CloserMap*)m {
+  if ( m_CurrentPoint ) {
+    PGPointTouch touch = [m_CurrentPoint InsideTouch:super.lastGestureInfo.position];
+    
+    switch ( touch ) {
+      case PGPointTouchButton: return NO;
+      case PGPointTouchCallout:
+        [m_CurrentPoint removeCallout:YES];
+        return NO;
+    }
+  }
+  
+  [self ClearMap];
+  
+//  [self RemovePOI];
+//  if ( [self getZoom] <= 0 && [self isBoundAllowed:[self getMapBounds] withType:super.mapType] ) {
+//    [self DrawPOI];
+//  }
+  
+	return [self isBoundAllowed:[self getMapBounds] withType:super.mapType];
+}
+
+-(BOOL) handleMapTwoFingerTap:(CloserMap*)m {
+  if ( m_CurrentPoint ) {
+    PGPointTouch touch = [m_CurrentPoint InsideTouch:super.lastGestureInfo.position];
+    
+    switch ( touch ) {
+      case PGPointTouchButton: return NO;
+      case PGPointTouchCallout:
+        [m_CurrentPoint removeCallout:YES];
+        return NO;
+    }
+  }
+  
+  [self ClearMap];
+//  [self RemovePOI];
+	return YES;
+}
+
+-(BOOL) handleMapDrag:(CloserMap*)m {
+  if (      super.lastGestureInfo.phase == GPStart ) [self ClearMap];
+	else if ( super.lastGestureInfo.phase == GPMove  ) {
+    CGPoint p = [super.closer convertPoint:super.lastGestureInfo.position toView:self];
+    [imgView setCenter:p];
+  }
+  else if ( super.lastGestureInfo.phase == GPEnd   ) {}
+  
+	return YES;
+}
+
+-(BOOL) handleMapLongPress:(CloserMap*)m {
+  
+  if ( !m_PlaceholderDelegate ) return YES;
+
+  CGPoint p = [super.closer convertPoint:super.lastGestureInfo.position toView:self];
+
+  CoordsLL ll = [PGFormule PixelToLatLong:p withCenter:[self getMapCenter] withZoom:[self getZoom] withSize:self.frame.size andZone:32];
+
+  PGPointPlaceholder *pp = [[PGPointPlaceholder alloc] initWithPosition:PGLocationCoordinate2DMake(ll.lat, ll.lon) withMap:self];
+  
+  if ( m_Delegate ) [pp setCalloutButtonSelector:m_PlaceholderSelector withObject:pp.Geocode toTarget:m_PlaceholderDelegate];
+
+  [self removePointAt:pp.tag];
+  [self addPoint:pp];
+
+  [pp release];
+
+  return YES;
+}
+
+- (void) handleTransitionEnd:(CloserMap *)map {
+}
+
+- (void) onMapZoom:(CloserMap*)map {
+  
+  if ( m_TimerZoom ) {
+    [m_TimerZoom invalidate];
+    [m_TimerZoom release];
+  }
+<<<<<<< .mine
+  
+  [self RefreshRoute];
+  [self ProtocolManager:@selector(MapBoundChanged:withEvent:) 
+              andObject:[NSNumber numberWithInt:type] 
+            andProtocol:@protocol(PGMapDelegate)];
+=======
+  
+  m_TimerZoom = [[NSTimer scheduledTimerWithTimeInterval:(0.3) target:self selector:@selector(onMapZoomEnd) userInfo:nil repeats:NO] retain];
+>>>>>>> .r780
+}
+
+- (void) onMapMove:(CloserMap*)map {
+  
+  if ( m_TimerMove ) {
+    [m_TimerMove invalidate];
+    [m_TimerMove release];
+  }
+
+  m_TimerMove = [[NSTimer scheduledTimerWithTimeInterval:(0.3) target:self selector:@selector(onMapMoveEnd) userInfo:nil repeats:NO] retain];
+}
+
+- (void) onMapRotate:(CloserMap*)map {
+
+  if ( m_TimerRotate ) {
+    [m_TimerRotate invalidate];
+    [m_TimerRotate release];
+  }
+  
+  m_TimerRotate = [[NSTimer scheduledTimerWithTimeInterval:(0.3) target:self selector:@selector(onMapRotateEnd) userInfo:nil repeats:NO] retain];
+}
+
+- (void) onMapZoomEnd {
+  if ( [m_TimerZoom isValid] ) [self onMapEventEnd:PGEventTypeZoom];
+}
+
+- (void) onMapMoveEnd {
+  if ( [m_TimerMove isValid] ) [self onMapEventEnd:PGEventTypeMove];
+}
+
+- (void) onMapRotateEnd {
+  if ( [m_TimerRotate isValid] ) [self onMapEventEnd:PGEventTypeRotate];
+}
+
+- (void) onMapEventEnd:(PGEventType)EventType {
+
+  switch ( EventType ) {
+    case PGEventTypeMove:
+    case PGEventTypeZoom:
+
+      [self RefreshRoute:EventType];
+      [self RefreshAriaMeteo];
+      break;
+  }
+  
+  if ( EventType == PGEventTypeZoom && m_GpsPoint ) {
+    [m_GpsPoint.Circle enableAnimation];
+    [m_GpsPoint.Circle setZoom:[super zoom]];
+  }
+  
+  [self ProtocolManager:@selector(MapBoundChanged:withEvent:) andObject:[NSNumber numberWithInt:EventType] andProtocol:@protocol(PGMapDelegate)];
+}
+
+
+#pragma mark -
+#pragma mark PUBLIC METHODS
+#pragma mark -
+
+-(void)moveMapTo:(CLLocationCoordinate2D)coordinate withAnimation:(BOOL)animated {
+  [self ClearMap];
+  [super moveMapTo:coordinate withAnimation:animated];
+}
+
+/**
+ * Centra la mappa alle coordinate specificate
+ * @param (double)lat Latitudine
+ * @param (double)lon Longitudine
+ */
+- (void) setCenterWith:(double)Lat AndLon:(double)lon {
+	[super setLonLat:lon:Lat];
+}
+
+/**
+ * Centra la mappa alle coordinate specificate ed esegue lo zoom
+ * @param (double)lat Latitudine
+ * @param (double)lon Longitudine
+ * @param (float)z Zoom
+ */
+- (void) setCenterWith:(double)Lat AndLon:(double)lon andZoom:(float)z {
+	[super setLonLat:lon :Lat :z];
+}
+
+/**
+ * Ritorna lo zoom corrente della mappa
+ * @return (float) zoom corrente
+ */
+- (float) getZoom {
+	return [super zoom];
+}
+
+/**
+ * Setta il valore di zoom della mappa 
+ * ed eventualmente del gps point
+ */
+- (void) setZoom:(float)zoom {
+  [super setZoom:zoom];
+
+  if ( m_GpsPoint ) {
+    [m_GpsPoint.Circle enableAnimation];
+    [m_GpsPoint.Circle setZoom:[super zoom]];
+  }
+}
+
+/**
+ * Imposta il tipo di Mappa
+ * @param (int)PGMapType
+ */
+const int PaddingCopy = 2;
+
+- (void) setMapType:(int)Type {
+	if (m_Params.Copies == nil) return;
+
+  [self isBoundAllowed:[self getMapBounds] withType:Type];
+  [self ShowCopyrightLabel:Type];
+	[super setMapType:Type];
+}
+
+/** TODO
+ * Ritorna il bound in coordinate dell'area di mappa visibile su schermo
+ * @return (PGBound)bound
+ */
+- (PGBound) getMapBounds {
+  return [PGFormule PixelToBoundLatLong:self.frame withCenter:[self getMapCenter] withZoom:[self getZoom] withSize:self.frame.size andZone:32];
+}
+
+/**
+ * Ritorna il centro della mappa in coordinate
+ * @return (CLLocationCoordinate2D)centro
+ */
+- (CLLocationCoordinate2D) getMapCenter {
+	return [super mapCenter];
+}
+
+/**
+ * Ritorna la posizione in pixel del punto scelto sulla mappa
+ * @param (PGPoint*)point Punto da trovare
+ * @return (CGPoint)punto
+ */
+- (CGPoint) getPointPosition:(PGPoint*)point {
+	return [super absoluteCoordinates:point];
+}
+
+- (CGPoint) getPosition {
+	return super.lastGestureInfo.position;
+}
+
+- (int) Geocode:(NSString*)Query withResult:(NSMutableArray*)Result {
+  if ( [Query compare:@"posizione attuale" options:NSCaseInsensitiveSearch] == NSOrderedSame ) {
+    [m_Gps EnableLocationService:YES];
+    PGGeoResult *pa = [[PGGeoResult alloc] init];
+    pa.Posizione = m_Gps.Location.coordinate;
+    pa.Comune = @"Posizione Attuale";
+    [Result addObject:pa];
+    [pa release];
+    return 0;
+  }
+  return [PGParser LbsParser:Query withConfig:m_Params withResult:Result];
+}
+
+- (void) PlaceholderDelegate:(id)Delegate andSelector:(SEL)Selector {
+  m_PlaceholderDelegate = Delegate;
+  m_PlaceholderSelector = Selector;
+}
+
+#pragma mark -
+#pragma mark PROTECTED METHODS
+#pragma mark -
+
+- (void) ClearMap {
+  [m_GpsPoint.Circle disableAnimation];
+}
+
+- (void) ShowCopyrightLabel:(int)Type {
+  switch (Type) {
+		case PGMapTypeStandard: [copyRightLabel setTextColor:[UIColor blackColor]]; break;
+		case PGMapTypeOrto:     [copyRightLabel setTextColor:[UIColor whiteColor]]; break;
+		case PGMapTypeMix:      [copyRightLabel setTextColor:[UIColor whiteColor]]; break;
+	}
+  
+	if ( !(Type < [m_Params.Copies count]) ) return; 
+	copyRightLabel.text = [NSString stringWithFormat:@"%@", [m_Params.Copies objectAtIndex:Type]];
+	[copyRightLabel setFont:[UIFont fontWithName:@"Arial" size:10]];
+	
+	CGPoint CopyPosition;
+	CopyPosition.x = self.bounds.size.width  - [copyRightLabel.text sizeWithFont:copyRightLabel.font].width  - PaddingCopy;
+	CopyPosition.y = self.bounds.size.height - [copyRightLabel.text sizeWithFont:copyRightLabel.font].height - PaddingCopy;
+	[copyRightLabel setFrame:CGRectMake(CopyPosition.x + self.bounds.origin.x, CopyPosition.y + self.bounds.origin.y, 
+																			[copyRightLabel.text sizeWithFont:copyRightLabel.font].width, 
+																			[copyRightLabel.text sizeWithFont:copyRightLabel.font].height)];
+	
+	[self addSubview:copyRightLabel];
+  
+  LogoView.frame = CGRectMake(-30, 
+                              self.bounds.size.height  - [copyRightLabel.text sizeWithFont:copyRightLabel.font].height - (PaddingCopy*4), 
+                              112, 27);
+  [self addSubview:LogoView];
+                              
+}
+
+- (void) ComputeBound:(PGBound)Bound andCenter:(CLLocationCoordinate2D*)Center andZoom:(int*)Zoom {
+	// Get the distance between the min and max
+  double dX = Bound.right - Bound.left;
+  double dY = Bound.top   - Bound.bottom;
+  
+  //The following hardcoded fix is due to the fact that when a PGpoint is really close to
+  //the maps' boundaries, you might not see the point.This way, in these cases, I
+  //get an higher level of zoom(cover a wider area)
+  double ZdXapprox =  dX * 430 / (1609.3 * (self.bounds.size.width  - 40));
+  double ZdYapprox =  dY * 430 / (1609.3 * (self.bounds.size.height - 40));
+  
+  double zoomArray[] = {0.0375, 0.075, 0.15, 0.3, 0.6, 1.2, 2.4, 4.8, 9.6, 19.2, 38.4, 76.8, 153.6, 307.2, 614.4, 1228.8};
+  
+  //invece il valore che calcoliamo è in R.
+  //lo arrotondiamo a uno dei valori possibili tramite:var z = this.map.getZoomIndex(ZdApprox);
+  double ZdApprox = (ZdXapprox > ZdYapprox) ? ZdXapprox : ZdYapprox;
+	int zIdx = 15;
+	
+	// 3) Get the next highest fitting zoom
+	for( int i=3; i < 16; i++ ) {
+		if (ZdApprox <= zoomArray[i]) {
+			zIdx = i;
+			break;
+		}
+	}
+	
+	*Zoom = zIdx - 3;
+	
+	//compute Center (NOT center of mass, but the real center of the bound region)
+	CoordsLL max = [PGFormule UTM2LL:Bound.top    : Bound.right];
+	CoordsLL min = [PGFormule UTM2LL:Bound.bottom : Bound.left];
+	
+	Center->longitude = min.lon + ((max.lon - min.lon) / 2);
+	Center->latitude  = min.lat + ((max.lat - min.lat) / 2);
+}
+
+- (PGBoundEx*) getMapUtmBounds {
+  PGBound bound = [PGFormule PixelToBoundUtm:self.frame withCenter:[self getMapCenter] withZoom:[self getZoom] withSize:self.frame.size andZone:32];
+  return [[[PGBoundEx alloc] InitWithBound:bound] autorelease];
+}
+
+- (float) getMaxMapMeters:(float) zoom {
+  int val = self.frame.size.width;
+  if (val < self.frame.size.height) val = self.frame.size.height;
+  return 1.12277 * pow(2, 12 - (12-zoom)) * val;
+}
+
+- (BOOL) isBoundAllowed:(PGBound)Bound withType:(PGMapType)Type {
+	float zoom = [self getZoom];
+  
+  if ( zoom >= 1 || Type != PGMapTypeStandard ) return YES;
+  
+  BOOL allowed = NO;
+  for ( NSValue *el in m_Params.Bounds ) {
+    PGBound bound;
+    [el getValue:&bound];
+    if ( bound.top <= Bound.top && bound.left <= Bound.left && bound.bottom >= Bound.bottom && bound.right >= Bound.right ) {
+      allowed = YES;
+      break;
+    }
+  }
+  
+  if ( !allowed ) {
+    [self setZoom:0];
+  } else if ( zoom < -1 ) {
+    [self setZoom:-1];
+  }
+  return allowed;
+}
+
+#pragma mark -
+#pragma mark POINT METHODS
+#pragma mark -
+
+/**
+ * Aggiunge un PGPoint su mappa
+ * @param (PGPoint*)view Punto da aggiungere
+ */
+- (void) addPoint:(PGPoint*)view {
+  [self addPoint:view withAnimation:YES];
+}
+
+- (void) addPoint:(PGPoint*)view withAnimation:(BOOL)Animate {
+  [m_Points addObject:view];
+  [super addPoint:view :view.Position :view.Anchor];
+  if ( Animate ) [self AnimateDropPoints:view];
+}
+
+double tAbs = 0.4;
+- (void) AnimateDropPoints:(PGPoint*)Point {
+  tAbs = tAbs + 0.02;
+  
+  CGRect endFrame = Point.frame;
+  Point.frame = CGRectMake(Point.frame.origin.x, -self.frame.size.height, 
+                           Point.frame.size.width, Point.frame.size.height);
+  
+  [UIView beginAnimations:@"drop" context:nil];
+  [UIView setAnimationDuration:tAbs];
+  [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+  [UIView setAnimationDelegate:self];
+  [UIView setAnimationDidStopSelector:@selector(AnimateDropPointsStop)];
+  [Point setFrame:endFrame];
+  [UIView commitAnimations];
+}
+
+- (void) AnimateDropPointsStop {
+  tAbs = 0.4;
+}
+
+- (void) removePointAt:(int)Tag {
+  PGPoint *point = nil;
+  for ( point in m_Points ) if ( point.tag == Tag ) break;
+  if ( !point ) return;
+  
+  [self RemovePoint:point];
+}
+
+- (void) RemovePoint:(PGPoint*)Point {
+  [super removePoint:Point];
+  [m_Points removeObject:Point];
+  if ( Point == m_CurrentPoint ) [self ClearCurrentPoint];
+}
+
+- (void) removePoints {
+  [self ClearCurrentPoint];
+  
+  for ( PGPoint *point in m_Points ) [super removePoint:point];
+  [m_Points removeAllObjects];
+}
+
+- (void) showAllPoints {
+  PGBound b = PGBoundMake(0, 0, 0, 0);
+  for ( int idx=0; idx<[m_Points count]; idx++ ) {
+    PGPoint *point = [m_Points objectAtIndex:idx];
+    if ( idx == 0 ) b = PGBoundMake(point.Position.latitude, point.Position.longitude, point.Position.latitude, point.Position.longitude);
+    
+    if ( point.Position.latitude  > b.top    ) b.top    = point.Position.latitude;
+    if ( point.Position.latitude  < b.bottom ) b.bottom = point.Position.latitude;
+    if ( point.Position.longitude < b.left   ) b.left   = point.Position.longitude;
+    if ( point.Position.longitude > b.right  ) b.right  = point.Position.longitude;
+  }
+  
+  CoordsUTM tl = [PGFormule LL2UTM:b.top    :b.left  :32];
+  CoordsUTM br = [PGFormule LL2UTM:b.bottom :b.right :32];
+  b = PGBoundMake(tl.northing, tl.easting, br.northing, br.easting);
+  
+  int z = 0;
+	CLLocationCoordinate2D c;
+  [self ComputeBound:b andCenter:&c andZoom:&z];
+
+  [self setZoom:z];
+  [self moveMapTo:c withAnimation:YES];
+}
+
+- (PGPoint*) getPointAt:(int)Tag {
+  int idx = [m_Points count];
+  while ( --idx >= 0 ) {
+    PGPoint *p = [m_Points objectAtIndex:idx];
+    if ( p.tag == Tag ) break;
+  }
+  
+  if ( idx >= 0 ) return [m_Points objectAtIndex:idx];
+  return nil;
+}
+
+- (void) ClearCurrentPoint {
+  if ( m_CurrentPoint ) {
+    [m_CurrentPoint release];
+    m_CurrentPoint = nil;
+  }
+}
+
+#pragma mark -
+#pragma mark ARIA METEO METHODS
+#pragma mark -
+
+- (void) RefreshAriaMeteo {
+  m_AMRequest = rand();
+  [NSThread detachNewThreadSelector:@selector(UpdateAriaMeteo:) toTarget:self withObject:[NSNumber numberWithInt:m_AMRequest]];
+}
+
+- (void) UpdateAriaMeteo:(id)AMRequest {
+  if ( [AMRequest intValue] == m_AMRequest ) [self ShowAriaMeteo:m_AriaMeteo]; 
+}
+
+- (void) ShowAriaMeteo:(int)Type {
+  
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  
+  if ( m_AriaMeteo != Type ) {
+    m_AriaMeteo = Type;
+    [self HideAriaMeteo];
+  }
+
+  if ( m_AriaMeteo != PGNoneType ) {
+    PGBound b = [self getMapBounds];
+    
+    NSString *server = [m_Params.Servers objectAtIndex:PGServerAria];
+    if ( Type == PGMeteoType ) server = [m_Params.Servers objectAtIndex:PGServerMeteo];
+    NSString *query = [NSString stringWithFormat:server, b.left, b.bottom, b.right, b.top, (int)[self getZoom] + 4];
+
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    [dict setObject:NSStringFromSelector(@selector(AddAriaMeteoPoints:withRequestId:)) forKey:@"selector"];
+    [dict setObject:query forKey:@"query"];
+    [dict setObject:[NSNumber numberWithInt:m_AMRequest] forKey:@"requestid"];
+    
+    PGHttpWrapper *http = [[[PGHttpWrapper alloc] initWithTarget:self] autorelease];
+    [http performSelectorOnMainThread:@selector(RequestData:) withObject:dict waitUntilDone:NO];
+  }
+  
+  [pool drain];
+}
+
+- (void) AddAriaMeteoPoints:(NSData*)Data withRequestId:(id)RequestId {
+  
+  if ( m_AMRequest != [RequestId intValue] ) return;
+
+  NSString *xml =[[NSString alloc] initWithData:Data encoding:NSUTF8StringEncoding];
+  NSArray *res = [PGParser AriaMeteoParser:m_AriaMeteo withData:xml];
+  [xml release];
+
+  NSMutableArray *remove = [[NSMutableArray alloc] initWithCapacity:[m_AMPoints count]];
+  
+  for ( PGAriaMeteoPoint *mp in m_AMPoints ) {
+    BOOL found = NO;
+    for ( PGAriaMeteo *am in res ) {
+      if ( [am.Location compare:mp.AriaMeteo.Location] == NSOrderedSame ) {
+        found = YES;
+        break;
+      }
+    }
+    if ( found ) [remove removeObject:mp];
+    else         [remove addObject:mp];
+  }
+
+  for ( PGAriaMeteoPoint *p in remove ) {
+    [m_AMPoints removeObject:p];
+    [p Animation:NO];
+    [self removePoint:p];
+  }
+  [remove release];
+  
+  for ( PGAriaMeteo *am in res ) {
+    BOOL found = NO;
+    
+    for ( PGAriaMeteoPoint *mp in m_AMPoints ) {
+      if ( [am.Location compare:mp.AriaMeteo.Location] == NSOrderedSame ) {
+        found = YES;
+        break;
+      }
+    }
+    
+    if ( found ) continue;
+    
+    PGAriaMeteoPoint *p = [[PGAriaMeteoPoint alloc] initWithAriaMeteo:am withMap:self withReciver:m_Delegate];
+    [m_AMPoints addObject:p];
+    [super addPoint:p :p.Position :p.Anchor];
+    [p Animation:YES];
+    [p release];
+  }
+  
+  if ( [m_AMPoints count] == 1 ) {
+    PGAriaMeteoPoint *p = [m_AMPoints objectAtIndex:0];
+    
+    CGRect r = [p convertRect:p.frame toView:self];
+    if ( CGRectIsEmpty(p.frame) || !CGRectContainsRect(self.frame, r) ) [self setPoint:p :[self getMapCenter]];
+  }
+}
+
+- (void) HideAriaMeteo {
+  for ( PGAriaMeteoPoint *p in m_AMPoints ) [self removePoint:p];
+  [m_AMPoints removeAllObjects];
+}
+
+#pragma mark -
+#pragma mark ROUTE METHODS
+#pragma mark -
+
+- (void) initAddRoute {
+  [self ProtocolManager:@selector(RouteDidStartLoading:) andObject:m_Route andProtocol:@protocol(PGRouteDelegate)];
+
+  lastRoutingReqId = 0;
+  
+  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+  [dict setObject:NSStringFromSelector(@selector(CreateRoute:)) forKey:@"selector"];
+  [dict setObject:[m_Route GetUrl:lastRoutingReqId] forKey:@"query"]; 
+  
+  PGHttpWrapper *http = [[[PGHttpWrapper alloc] initWithTarget:self] autorelease];
+  [http performSelectorOnMainThread:@selector(RequestData:) withObject:dict waitUntilDone:NO];    
+}
+
+/**
+ * Aggiunge un percorso sulla mappa
+ * @param (PGRoute*)aRoute Route da aggiungere
+ * @see PGRoute
+ */
+- (void) addRoute:(PGRoute*) aRoute {
+	m_Route = [aRoute retain];
+  [m_Route SetDelegate:self andServerUrl:[m_Params.Servers objectAtIndex:PGServerRoute] andPFR:m_Params.PointsForRegions];
+
+  [self initAddRoute];  
+}
+
+/**
+ * Aggiunge un percorso sulla mappa
+ * @param (PGRoute*)aRoute Route da aggiungere
+ * @param (PGRouteParams*)par Parametri di configurazione percorso
+ * @see PGRoute
+ */
+- (void) addRoute:(PGRoute*) aRoute withParams:(PGRouteParams*)par {
+	m_Route = [aRoute retain];
+  [m_Route SetParams:par andDelegate:self andServerUrl:[m_Params.Servers objectAtIndex:PGServerRoute] andPFR:m_Params.PointsForRegions];
+  
+  [self initAddRoute];
+}
+
+- (void) CreateRoute:(NSData*)Data {
+  
+  NSString *xml;
+  @try {
+    for (PGPoint *p in m_Route.Points) [self addPoint:p withAnimation:YES];
+
+    xml =[[NSString alloc] initWithData:Data encoding:NSUTF8StringEncoding];
+    [m_Route GetRoute:lastRoutingReqId withXml:xml];
+    
+    if (![PGBoundEx CheckBound:m_Route.Result.RouteBound]) return;
+    
+    int xZoom = 0;
+    CLLocationCoordinate2D xCenter;
+    [self ComputeBound:m_Route.Result.RouteBound andCenter:&xCenter andZoom:&xZoom];
+    
+    [self setZoom:xZoom];
+    [self moveMapTo:xCenter withAnimation:YES];
+  }
+  @catch (PGRouteException *e) 
+  {
+    [self clearRoute];
+    [self ProtocolManager:@selector(MessageError:withException:) andObject:e andProtocol:@protocol(PGMapDelegate)];
+  }
+  @finally {
+    if (xml) [xml release];
+    [self ProtocolManager:@selector(RouteDidStopLoading:) andObject:m_Route andProtocol:@protocol(PGRouteDelegate)];    
+  }
+
+}
+
+- (void) updateRoute:(id)RoutingReqId {	
+	if (m_Route) {
+    
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    NSMutableArray *points = [NSMutableArray array];
+
+    [m_Route.Params setHiliteUntilIndexEx:[m_Route GetPoints:points ofRouteId:[RoutingReqId intValue]]];
+    
+		if( m_Route.Result.RouteId == lastRoutingReqId )
+      [self performSelectorOnMainThread:@selector(DrawRoute:) withObject:points waitUntilDone:NO];
+
+    [pool drain];
+	}
+}
+
+- (void) DrawRoute:(NSArray*)Points {
+  if ( !Points || [Points count] == 0 ) return;
+  
+  [m_Route.Params setRouteZoom:[self getZoom]];
+  PGWayPoint *wp = [m_Route.Result.WayPoints objectAtIndex:WP_START];
+  CGRect bound = [super drawRoute:wp.WayPointXY :Points :m_Route.Params.Config];
+  
+  CGPoint start = [PGFormule UtmToPixels:wp.DrwAt withCenter:[self getMapCenter] withZoom:[self getZoom] withSize:self.frame.size andZone:32];
+  
+  bound.origin.x += start.x;
+  bound.origin.y += start.y;
+  
+  m_Route.Bound = [PGFormule PixelToBoundUtm:bound withCenter:[self getMapCenter] withZoom:[self getZoom] withSize:self.frame.size andZone:32];
+}
+
+- (void) RefreshRoute:(PGEventType)EventType {
+  if ( !m_Route ) return;
+
+  PGBoundEx *bound = [self getMapUtmBounds];
+
+  if ( [PGDevice GetPlatformType] == UIDevice4iPhone ) [bound Increase:[self getMaxMapMeters:[super zoom]]];
+  
+  if ( (EventType == PGEventTypeMove && [PGBoundEx CheckBound:m_Route.Bound] && [bound Included:m_Route.Bound]) || [bound Excluded:m_Route.Result.RouteBound] ) return;
+  
+  lastRoutingReqId = rand();
+  [NSThread detachNewThreadSelector:@selector(updateRoute:) toTarget:self withObject:[NSNumber numberWithInt:lastRoutingReqId]];
+}
+
+- (PGRStep *) showNextStep {
+  if ( !m_Route ) return nil;
+  return [self showStepAt:m_Route.Params.HiliteUntilIndex + 1];
+}
+
+- (PGRStep *) showPrevStep {
+  if ( !m_Route ) return nil;
+  return [self showStepAt:m_Route.Params.HiliteUntilIndex - 1];
+}
+
+- (PGRStep *) showStepAt:(int)Index {
+  if ( !m_Route || Index < 0 || Index > [m_Route.Result.Rsteps count] ) return nil;   
+  [m_Route.Params setHiliteUntilIndex:Index];
+  [self restartTimer:PGTimerRoute];
+
+  [self ShowRouteCirclesAt:Index];
+
+  return [m_Route.Result RstepAtIndex:m_Route.Params.HiliteUntilIndex];
+}
+
+- (NSMutableArray*) GetAllSteps {
+  return m_Route.Result.Rsteps;
+}
+
+/**
+ * Elimina il percorso disegnato su mappa
+ */
+- (void) clearRoute {
+	if ( m_Route ) {
+    [m_Route release];
+    m_Route = nil;
+  }
+  
+	[super clearRoute];	
+}
+
+- (void) ShowRouteCircles:(BOOL) show {
+  [m_Route ShowCircles:show];
+}
+
+- (void) ShowRouteCirclesAt:(int) idx {
+  [m_Route ShowCirclesAt:idx];
+}
+
+#pragma mark -
+#pragma mark POI
+
+- (void) DrawPOI {
+  [self RemovePOI];
+
+  NSArray *pois = [[PGPOIParser GetAllPOI] retain];
+  int tag = 9999;
+  for (PGPoi *p in pois) {
+    PGPoint *PoiPoint = [[PGPoint alloc] initWith:CLLocationCoordinate2DMake(p.Lon, p.Lat)
+                                        pointType:PGPointTypeTransparent isDraggable:NO 
+                                              pos:CGPointMake(0, 0) inView:self isTouchable:YES];
+    [PoiPoint setCalloutTitle:[p.Nome stringByReplacingOccurrencesOfString:@"\"" withString:@""]];
+    [PoiPoint setCalloutSubtitle:[p.Tipo isEqualToString:@"\"M\""] ? @"Metro" : @"Passante ferroviario"];
+    [PoiPoint setCalloutButtonSelector:nil withObject:nil toTarget:self];
+    PoiPoint.tag = tag++;
+    [self addPoint:PoiPoint];
+    [PoiPoint release];
+  }
+}
+- (void) RemovePOI {
+  for ( PGPoint *point in m_Points ) 
+    if ( point.tag > 9999 ) 
+      [super removePoint:point];
+}
+
+
+#pragma mark -
+#pragma mark PROTOCOL MANAGEMENT
+#pragma mark -
+
+- (void) ProtocolManager:(SEL)selector andObject:(id)Obj andProtocol:(Protocol*)protocol {
+  if ( !m_Delegate || 
+      ![m_Delegate conformsToProtocol:protocol] || 
+      ![m_Delegate respondsToSelector:selector] ) 
+    return;
+  
+  if ( Obj ) [m_Delegate performSelector:selector withObject:self withObject:Obj];
+  else [m_Delegate NetworkNoPresent:self];
+}
+
+
+#pragma mark -
+#pragma mark DEALLOC
+#pragma mark -
+
+- (void) dealloc {
+  
+  if ( m_TimerZoom ) {
+    [m_TimerZoom invalidate];
+    [m_TimerZoom release];
+  }
+  
+  if ( m_TimerMove ) {
+    [m_TimerMove invalidate];
+    [m_TimerMove release];
+  }
+
+  if ( m_TimerRotate ) {
+    [m_TimerRotate invalidate];
+    [m_TimerRotate release];
+  }
+  
+  if ( m_Gps )      [m_Gps release];
+	if ( m_GpsPoint ) {
+    [super removePlaceholder:m_GpsPoint.Circle];
+    [super removePoint:m_GpsPoint];
+    [m_GpsPoint release];
+  }
+  if ( m_Compass ) [m_Compass release];
+	
+  if ( imgView )        [imgView release];
+	if ( copyRightLabel ) [copyRightLabel release];
+
+	if ( m_Route        ) [m_Route release];
+  if ( m_Points       ) [m_Points release];
+  if ( m_CurrentPoint ) [m_CurrentPoint release];
+
+	if ( m_Params ) [m_Params release];
+
+  if ( m_Net_HostReach ) [m_Net_HostReach release];
+  
+  [[NSNotificationCenter defaultCenter] removeObserver:self];	
+	
+  if ( m_Queue ) [m_Queue release];
+	if ( m_Autocomplete ) [m_Autocomplete release];
+  if ( m_Autocomplete ) [m_Autocomplete release];
+  
+  if ( m_AMPoints ) [m_AMPoints release];
+  
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  
+	[super dealloc];
+}
+
+#pragma mark -
+#pragma mark NETWORK_NOTIFICATIONS
+
+- (void) handleNetworkChange:(NSNotification *)notice {
+  [self CheckNetworkAval];
+}
+
+@end

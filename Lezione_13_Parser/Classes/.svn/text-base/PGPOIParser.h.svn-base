@@ -1,0 +1,18 @@
+//
+//  PGPOIParser.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 11/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+
+@interface PGPOIParser : NSObject {
+
+}
+
++ (NSMutableArray*) GetAllPOI;
+
+@end

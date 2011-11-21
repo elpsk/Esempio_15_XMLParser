@@ -1,0 +1,21 @@
+//
+//  Config.h
+//  tc
+//
+//  Created by Gianluca Folloni on 03/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+
+@interface PGConfig : NSObject {
+}
+
++ (NSString*) GetKey:(NSString*)Key ofFile:(NSString*)File;
+
++ (NSString*) GetKeyAsUrl:(NSString*)Key ofFile:(NSString*)File;
+
++ (NSString*) GetBundleFile:(NSString*)Name ofType:(NSString*)Type;
+
+@end

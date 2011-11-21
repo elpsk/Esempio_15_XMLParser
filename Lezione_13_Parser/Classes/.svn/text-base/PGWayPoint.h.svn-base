@@ -1,0 +1,25 @@
+//
+//  WayPoint.h
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 23/02/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+#import "PGFormule.h"
+
+@interface PGWayPoint : NSObject {
+	CLLocationCoordinate2D m_WayPointXY;
+	NSString		*m_localita;
+	NSString		*m_descrizione;
+	CoordsUTM		m_DrwAt;
+}
+
+@property (readonly) CLLocationCoordinate2D WayPointXY;
+@property (readonly) CoordsUTM DrwAt;
+
+- (void) initWayPoint:(float)x addY:(float)y addLoc:(NSString *)loc addDsc:(NSString *)dsc addDrwX:(float)drwX addDrwY:(float)drwY;
+
+@end

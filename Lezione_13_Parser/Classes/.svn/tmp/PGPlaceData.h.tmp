@@ -1,0 +1,22 @@
+//
+//  PGPlace.h
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 11/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+@interface PGPlaceData : NSObject {
+	NSString *	m_Name;
+	int					m_Weight;
+}
+
+@property (nonatomic, retain) NSString *Name;
+
+- (id) initWithParams:(NSString *) placeName addWeight:(int) placeWeight;
+- (NSString *) getNamePlace;
+- (int) getWeight;
+
+@end

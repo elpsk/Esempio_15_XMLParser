@@ -1,0 +1,57 @@
+//
+//  PGTextField.h
+//  PGTextField
+//
+//  Created by Gianluca Folloni on 31/08/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "PGTableView.h"
+#import "PGParams.h"
+
+
+@protocol PGOpaqueViewDelegate <NSObject>
+  @optional
+    - (void) OpaqueViewClicked:(CGPoint)Point;
+@end
+
+@interface PGOpaqueView : UIView {
+  id<PGOpaqueViewDelegate> _Delegate;
+}
+
+- (id) initWithFrame:(CGRect)frame andDelegate:(id)Delegate;
+
+@end
+
+
+@interface PGTextFieldCtrl : NSObject <UITextFieldDelegate> {
+  id _Delegate;
+}
+
+- (id) initWithDelegate:(id)Delegate;
+
+@end
+
+
+@class PGTextField;
+
+@protocol PGTextFieldDelegate <NSObject>
+  @optional
+    - (void) Autocomplete:(PGTextField*)Ctrl andChoice:(NSString*)choice; 
+    - (void) OpaqueViewClicked:(NSValue*)Point andTextField:(PGTextField*)Ctrl;
+@end
+
+
+@interface PGTextField : UITextField <PGTableViewDelegate, PGOpaqueViewDelegate> {
+  PGOpaqueView *_OpaqueView;
+  PGTableView *_TableView;
+  PGTextFieldCtrl *_Controller;
+
+  UIViewController *_Receiver;
+}
+
+- (void) InitTextField:(PGParams*)Params withReceiver:(UIViewController*)Receiver;
+- (void) Update;
+
+@end

@@ -1,0 +1,77 @@
+//
+//  PGRoute.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 17/02/11.
+//  Copyright 2011 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+
+#import "PGCache.h"
+#import "PGFormule.h"
+#import "Costanti.h"
+#import "PGParser.h"
+#import "PGRouteResults.h"
+#import "PGRouteParams.h"
+
+@class PGRoute;
+
+/** WayPointType
+ *  Una enum contenente i tipi di waypont di un percorso (Start, end)
+ */
+typedef enum 
+{
+	WP_START = 0,
+	WP_END
+} WayPointType;
+
+@protocol PGRouteDelegate <NSObject>
+@optional
+  - (void) RouteDidStartLoading:(PGRoute*)route;
+  - (void) RouteDidStopLoading :(PGRoute*)route;
+@end
+
+@interface PGRoute : NSObject {	
+  id delegate;
+  //id <PGRouteDelegate> m_Delegate;
+	
+	NSString *m_Server;
+
+	PGParser       *parser;
+	PGRouteResults *m_Result;
+	PGRouteParams  *m_Params;  
+  PGBound         m_Bound;
+  
+  NSMutableArray *m_Circles;
+  NSArray        *m_Points;
+}
+
+@property (readonly) PGRouteResults *Result;
+@property (nonatomic, retain) PGRouteParams *Params;
+@property (nonatomic, assign) PGBound Bound;
+
+@property (nonatomic, retain) NSArray *Points;
+@property (nonatomic, retain) NSMutableArray *Circles;
+
+/*
+ * Metodi esposti dalla libreria non cancellare
+ */
+- (void) setParams:(PGRouteParams*) pars;
+/***/
+
+- (void) SetDelegate:(id)Delegate andServerUrl:(NSString *)url andPFR:(int)PFR;
+- (id) initWithPoints:(NSArray*)points andParams:(PGRouteParams*)params;
+
+- (int) GetPoints:(NSMutableArray*)Points ofRouteId:(int)RouteId;
+- (void) GetRoute:(int)RouteId withXml:(NSString*)Xml;
+- (void) SetParams:(PGRouteParams*)Pars andDelegate:(id)Delegate andServerUrl:(NSString *)url andPFR:(int)PFR;
+- (PGBound) GetBestBound;
+- (NSString*) GetUrl:(int)RouteId;
+- (void) ProtocolManager:(SEL)selector andObject:(id)Obj;
+
+- (void) ShowCircles:(BOOL) show;
+- (void) ShowCirclesAt:(int) idx;
+
+@end

@@ -1,0 +1,50 @@
+//
+//  PGTableViewCell.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 22/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGTableViewCell.h"
+
+
+@implementation PGTableViewCell
+
+@synthesize Original=_Original;
+
+const float CellHeight = 30.0;
+
+#pragma mark Initialization
+
+
+- (id) initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
+  self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+  if ( self ) self.textLabel.font = [UIFont fontWithName:@"Helvetica" size:12];
+  return self;
+}
+
+- (void)dealloc {
+  if ( _Original ) [_Original release];
+  [super dealloc];
+}
+
+- (void)layoutSubviews {
+  
+  [super layoutSubviews];
+  
+  self.imageView.frame = CGRectZero;
+  self.detailTextLabel.frame = CGRectZero;
+  self.textLabel.frame = CGRectMake(self.textLabel.frame.origin.x, self.textLabel.frame.origin.y, self.textLabel.frame.size.width, CellHeight);
+  
+  super.frame  = CGRectMake(self.frame.origin.x, self.frame.origin.y, self.frame.size.width, CellHeight);
+}
+
+
+#pragma mark Selection
+
+- (void)setSelected:(BOOL)selected animated:(BOOL)animated {
+  [super setSelected:selected animated:animated];
+}
+
+@end

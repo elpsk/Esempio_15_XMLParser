@@ -1,0 +1,222 @@
+//
+// PGIPHONEViewController.m
+// PGIPHONE
+//
+// Created by Seat Team PGNAV on 08/10/10.
+// Copyright __MyCompanyName__ 2010. All rights reserved.
+//
+
+#import "PGIPHONEAppDelegate.h"
+
+#import "PGIPHONEViewController.h"
+
+#import "PGFormule.h"
+#import "PGPoint.h"
+#import "PGMap.h"
+#import "PGParams.h"
+#import "PGRoute.h"
+#import "PGRouteParams.h"
+#import "CloserParams.h"
+#import "CloserMap.h"
+#import "PGDevice.h"
+#import "PGGeoResult.h"
+
+#import "PGStreetView.h"
+#import "PGParser.h"
+#import "PGRouteCircles.h"
+#import "PGTableView.h"
+
+@implementation PGIPHONEViewController
+
+@synthesize MyView=m_View, Prev=m_Prev, Next=m_Next, StateLabel=m_StateLabel, StateImage=m_StateImage;
+
+
+- (void) viewDidLoad {
+  
+	PGParams *params = [[PGParams alloc] init];
+	[params setLat:45.46347];
+	[params setLon:9.19404];
+	[params setZoom:10];
+	[params setMapType:PGMapTypeStandard];
+  [params setClipsToBounds:YES];
+  [params setEnableTileFadeEffect:YES];
+	
+  map = [[PGMap alloc] initWithFrame:CGRectMake(0, 0, m_View.frame.size.width, m_View.frame.size.height) andConfig:params andDelegate:self];
+	
+	PGTableView *tmp = [[PGTableView alloc] initWithFrame:CGRectMake(0, 0, 0, 0) andMap:map];
+	[tmp autocompleteString:@"milano vicolo"];
+  
+  map.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | 
+  UIViewAutoresizingFlexibleWidth | 
+  UIViewAutoresizingFlexibleRightMargin |
+  UIViewAutoresizingFlexibleTopMargin |
+  UIViewAutoresizingFlexibleHeight |
+  UIViewAutoresizingFlexibleBottomMargin;
+       
+  m_View.autoresizesSubviews = YES;
+  [m_View addSubview:map];
+
+	[params release];
+
+  [map enableMapRotation:YES];
+	
+}
+
+<<<<<<< .working
+- (IBAction) test {
+  int number = 81;
+  NSMutableString * string = [NSMutableString string];
+  int spacing = pow( 2, 3 );
+  int width = /*( sizeof( number ) ) **/ 8;
+  int binaryDigit = 0;
+  int integer = number;
+  while( binaryDigit < width ) {
+    binaryDigit++;
+    [string insertString:( (integer & 1) ? @"1" : @"0" )atIndex:0];
+    if( binaryDigit % spacing == 0 && binaryDigit != width ) {
+      [string insertString:@" " atIndex:0];
+    }
+    integer = integer >> 1;
+  }
+  NSLog(@"BIN: %@", string);
+}
+
+=======
+- (IBAction) test {
+}
+
+>>>>>>> .merge-right.r715
+- (BOOL) shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
+  return YES;
+}
+
+- (void) calloutClick:(id)Object {
+  if ( Object ) {
+    NSLog(@"Geocodifica: %@", [Object Descrizione]);
+  }
+  else NSLog(@"callout click NO");
+}
+
+- (void) didReceiveMemoryWarning { 
+	[super didReceiveMemoryWarning];
+}
+
+- (IBAction) enableGpsOnMap:(id)Sender {
+  BOOL val = [Sender selectedSegmentIndex] == 1;
+  [map enableGps:val];
+}
+
+- (IBAction) enableRoute:(id)Sender {
+  BOOL val = [Sender selectedSegmentIndex] == 1;
+  
+  if (val == 1) {
+    
+    PGGeoResult *lbsone = [[PGParser LbsParser:@"milano" withConfig:map.Params] objectAtIndex:0];
+    CLLocationCoordinate2D locRA = PGLocationCoordinate2DMake(lbsone.Posizione.latitude, lbsone.Posizione.longitude);    
+    PGGeoResult *lbstwo = [[PGParser LbsParser:@"venezia" withConfig:map.Params] objectAtIndex:0];
+
+    CLLocationCoordinate2D locRB = PGLocationCoordinate2DMake(lbstwo.Posizione.latitude, lbstwo.Posizione.longitude);
+    
+    PGRouteParams *routePar = [[PGRouteParams alloc] init];
+    [routePar setStartPoint:locRA andEndPoint:locRB];
+    [routePar setType:PGRouteTypeCar];
+    [routePar setSito:@"iphone"];
+    [routePar setLineColor:[UIColor blueColor]];
+    [routePar setLineOpacity:0.5];
+    [routePar setLineWidth:5];
+    [routePar setUseHilite:YES];
+    [routePar setLineHilitedColor:[UIColor greenColor]];
+    [routePar setLineHilitedOpacity:0.5];
+    [routePar setHiliteUntilIndex:-1];
+    
+    PGPoint *pA = [[PGPoint alloc] initWith:locRA pointType:PGPointTypeIpadWhite isDraggable:NO pos:CGPointMake(0, 0) inView:map isTouchable:NO];
+    [pA setCalloutTitle:@"Geo"];
+    [pA setCalloutSubtitle:[lbsone Descrizione]];
+    [pA setCalloutButtonSelector:@selector(calloutClick:) withObject:lbsone toTarget:self];
+
+    PGPoint *pB = [[PGPoint alloc] initWith:locRB pointType:PGPointTypeIpadYellow isDraggable:NO pos:CGPointMake(0, 0) inView:map isTouchable:YES];
+    [pB setCalloutTitle:@"Geo"];
+    [pB setCalloutSubtitle:[lbstwo Descrizione]];
+    [pB setCalloutButtonSelector:@selector(calloutClick:) withObject:lbstwo toTarget:self];
+
+    NSArray *PointsArray = [NSArray arrayWithObjects:pA, pB, nil];    
+    PGRoute *route = [[PGRoute alloc] initWithPoints:PointsArray andParams:routePar];
+    [map addRoute:route];
+        
+    [pA release];
+    [pB release];
+    [routePar release];
+    [route release];
+    
+  } else {
+    [map clearRoute];
+    [map removePoints];
+  }
+  
+}
+
+//- (void) RouteDidStartLoading:(PGRoute *)route {
+//  NSLog(@"%s", __FUNCTION__);
+//}
+//
+- (void) RouteDidStopLoading:(PGRoute *)route {
+//  [map setZoom:1];
+//  [map moveMapTo:CLLocationCoordinate2DMake(45.48080, 9.18467) withAnimation:YES];
+}
+
+- (IBAction) enableCompassOnMap:(id)Sender {
+  BOOL val = [Sender selectedSegmentIndex] == 1;
+  [map enableCompass:val];
+}
+
+- (IBAction) changeBound:(id)Sender {
+  int height = ([Sender selectedSegmentIndex] == 0) ? 300 : 480; 
+  [self.view setBounds:CGRectMake(0, 0, 320, height)];
+}
+
+- (IBAction) enableStep:(id)Sender {
+  BOOL val = [Sender selectedSegmentIndex] == 0;
+  [map ShowRouteCircles:!val];
+}
+
+- (IBAction) changeStep:(id)Sender {
+  PGRStep *step = nil;
+    
+  if ( [Sender tag] == 0 ) step = [map showPrevStep];
+  else step = [map showNextStep];
+  
+  if ( step ) {
+    [map setZoom:0];
+    [map moveMapTo:step.Coord withAnimation:YES];
+    
+<<<<<<< .working
+    NSLog(@"URL: %@", step.ImageUrl);
+    [m_StateLabel setText:step.DestSt];
+=======
+//    PGRouteCircles *circles = [[PGRouteCircles alloc] initWithDefaultValues:step.IdRstep];
+//    [map addPlaceHolder:circles :step.Coord :CGPointMake(0.5, 0.5)];
+//    [circles release];
+
+>>>>>>> .merge-right.r715
+    NSData *imgData = [NSData dataWithContentsOfURL:[NSURL URLWithString:step.ImageUrl]];
+    [m_StateImage setImage:[UIImage imageWithData:imgData]];
+    [m_StateLabel setText:step.Current];
+    NSLog(@"%@", [step GetDescription]);
+    
+    [map ShowRouteCirclesAt:step.IdRstep];
+  }
+}
+
+- (IBAction) changeMapType:(id)Sender {
+  [map setMapType:([Sender isOn] ? PGMapTypeOrto : PGMapTypeStandard)];
+}
+
+- (void) NetworkNoPresent:(PGMap *)Map {  
+  NSLog(@"%s", __FUNCTION__);
+}
+
+- (void)dealloc {
+	[super dealloc];
+}
+
+@end

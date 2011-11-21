@@ -1,0 +1,38 @@
+//
+//  PGIPHONEAppDelegate.m
+//  PGIPHONE
+//
+//  Created by Seat Team PGNAV on 08/10/10.
+//  Copyright __MyCompanyName__ 2010. All rights reserved.
+//
+
+#import "PGIPHONEAppDelegate.h"
+#import "PGIPHONEViewController.h"
+
+@implementation PGIPHONEAppDelegate
+
+@synthesize window;
+@synthesize viewController;
+
+- (void)applicationDidFinishLaunching:(UIApplication *)application {    
+    
+  if ( [[UIApplication sharedApplication] respondsToSelector:@selector(setStatusBarHidden:withAnimation:)] )
+    [[UIApplication sharedApplication] setStatusBarHidden:YES withAnimation:UIStatusBarAnimationFade];
+  else
+    [[UIApplication sharedApplication] setStatusBarHidden:NO animated:NO];
+  
+	
+    // Override point for customization after app launch    
+    [window addSubview:viewController.view];
+    [window makeKeyAndVisible];
+}
+
+
+- (void)dealloc {
+    [viewController release];
+    [window release];
+    [super dealloc];
+}
+
+
+@end

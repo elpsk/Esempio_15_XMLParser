@@ -1,0 +1,27 @@
+//
+//  HttpWrapper.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 24/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+
+@interface PGHttpWrapper : NSObject {
+  NSURLConnection *_Connection;
+  NSMutableData   *_Data;
+  
+  id  _Target;
+  SEL _Selector;
+  int _RequestId;
+}
+
++ (NSString *)UrlEncode:(NSString *)string;
++ (NSString *)UrlDecode:(NSString *)string;
+
+- (id) initWithTarget:(id)Target;
+- (void) RequestData:(NSDictionary*)Params;
+
+@end

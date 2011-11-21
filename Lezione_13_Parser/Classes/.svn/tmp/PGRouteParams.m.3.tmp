@@ -1,0 +1,162 @@
+//
+//  PGRouteParams.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 16/11/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import "PGRouteParams.h"
+#import "PGDevice.h"
+
+
+/**
+ * Internals Methods
+ */
+@interface PGRouteParams (Internals)
+	- (float) calculateRouteZoomFrom:(int)apiZ;
+@end
+
+/**
+ * Classe per la configurazione del percorso
+ */
+@implementation PGRouteParams
+
+@synthesize startCoords, endCoords, routeSito, Config = m_Config; 
+@synthesize HiliteUntilIndex = m_HiliteUntilIndex, PointsForRegions = m_PointsForRegion;
+@synthesize RouteCircles = m_RouteCircles;
+
+/**
+ * Inizializza i parametri di default
+ */
+- (id) init {
+  self = [super init];
+  if ( !self ) return nil;
+
+  m_RouteType  = PGRouteTypeCar;
+
+  routeSito  = @"iphone";
+	if ( [[PGDevice GetModel]rangeOfString:@"iPad"].location != NSNotFound ) routeSito = @"ipad";
+  
+  m_Config = [[NSMutableDictionary alloc] init];
+  
+  m_RouteCircles = NO;
+
+	[self setLineColor:[UIColor redColor]];
+  [self setLineWidth:4];
+  [self setLineOpacity:0.4];
+  
+  [self setUseHilite:NO];
+  [self setHiliteUntilIndex:0];
+  [self setLineHilitedColor:[UIColor yellowColor]];
+  [self setLineHilitedOpacity:0.4];
+
+	return self;
+}
+
+- (void)dealloc {
+	if ( m_Config ) {
+    [m_Config removeAllObjects];
+    [m_Config release]; 
+    m_Config = nil;
+  }
+  [super dealloc];
+}
+
+- (float) calculateRouteZoomFrom:(int)apiZ {
+	return (0.0375 * pow(2, (apiZ+3)));
+}
+
+/**
+ * Imposta i punti di inizio e fine del percorso
+ * @param (CLLocationCoordinate2D)start Punto di inizio in coordinate
+ * @param (CLLocationCoordinate2D)end Punto di arrivo in coordinate
+ */
+- (void) setStartPoint:(CLLocationCoordinate2D)start andEndPoint:(CLLocationCoordinate2D)end {
+	startCoords = start;
+	endCoords   = end;
+}
+
+/**
+ * Imposta il tipo di percorso
+ * @param (RouteType)type Tipo di percorso
+ */
+- (void) setType:(RouteType)type {
+	m_RouteType = type;
+}
+
+/**
+ * Imposta il nome dell'applicazione nell'url chiamante
+ * @param (NSString*)sito Nome applicazione chiamante
+ */
+- (void) setSito:(NSString*)sito {
+	routeSito = sito;
+}
+
+- (void) setUseHilite:(BOOL)UseHilite {
+  [m_Config setObject:[NSNumber numberWithBool:UseHilite] forKey:@"useHilite"];
+}
+
+- (void) setHiliteUntilIndex:(int)HiliteUntilIndex {
+  m_HiliteUntilIndex = HiliteUntilIndex;
+}
+
+- (void) setHiliteUntilIndexEx:(int)HiliteUntilIndex {
+  [m_Config setObject:[NSNumber numberWithInt:HiliteUntilIndex] forKey:@"hiliteUntilIndex"];
+}
+
+- (void) setLineHilitedColor:(UIColor *)LineHilitedColor {
+  [m_Config setObject:LineHilitedColor forKey:@"lineHilitedColor"];
+}
+
+- (void) setLineHilitedOpacity:(float)LineHilitedOpacity {
+  [m_Config setObject:[NSNumber numberWithFloat:LineHilitedOpacity] forKey:@"lineHilitedAlpha"];
+}
+
+/**
+ * Imposta il colore della linea
+ * @param (UIColor*)color Colore della linea del percorso
+ */
+- (void) setLineColor:(UIColor*)color {
+  [m_Config setObject:color forKey:@"lineColor"];
+}
+
+/**
+ * Imposta l'opacità della linea del percorso
+ * @param (float)opacity Opacità
+ */
+- (void) setLineOpacity:(float)opacity {
+  [m_Config setObject:[NSNumber numberWithFloat:opacity] forKey:@"lineAlpha"];
+}
+
+/**
+ * Imposta lo spessore della linea
+ * @param (int)width Spessore linea
+ */
+- (void) setLineWidth:(int)width {
+  [m_Config setObject:[NSNumber numberWithInt:width] forKey:@"lineThick"];
+}
+
+- (void) setRouteZoom:(float)Zoom {
+  [m_Config setObject:[NSNumber numberWithFloat:Zoom] forKey:@"routeZoom"];
+}
+
+- (NSString*) getRouteTypeAsString {
+  switch ( m_RouteType ) 
+  {
+    case PGRouteTypeCar:        return @"c";
+    case PGRouteTypeBus:        return @"bus";
+    case PGRouteTypeTaxi:       return @"txi";
+    case PGRouteTypeCarPool:    return @"cp";
+    case PGRouteTypeTruck:      return @"trk";
+    case PGRouteTypeEmergency:  return @"emg";
+    case PGRouteTypeCarNoToll:  return @"cnt";
+    case PGRouteTypeShort:      return @"cbd";
+    case PGRouteTypePed:        return @"p";
+		case PGRouteTypeFast:       return @"c";
+		case PGRouteTypePub:        return @"atq";
+    default: return @"c";
+  }
+}
+
+@end

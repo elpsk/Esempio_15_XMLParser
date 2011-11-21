@@ -1,0 +1,87 @@
+//
+//  Formule.h
+//  PG-iPhone
+//
+//  Created by Seat PagineGialle on 07/10/10.
+//
+
+#import <CoreLocation/CoreLocation.h>
+#import <UIKit/UIKit.h>
+#import "PGBoundEx.h"
+
+
+typedef struct {
+    double northing;
+    double easting;
+} CoordsUTM;
+
+typedef struct {
+    double lat;
+    double lon;
+} CoordsLL;
+
+NS_INLINE CoordsUTM CoordsUTMMake(double north, double east) {
+  CoordsUTM u;
+  u.northing = north;
+  u.easting  = east;
+  return u;
+}
+NS_INLINE CoordsLL  CoordsLLMake (double lat,   double lon) {
+  CoordsLL l;
+  l.lat = lat;
+  l.lon = lon;
+  return l;
+}
+
+static inline CLLocationCoordinate2D PGLocationCoordinate2DMake(CLLocationDegrees latitude, CLLocationDegrees longitude)
+{
+  CLLocationCoordinate2D coord;
+  coord.latitude = latitude;
+  coord.longitude = longitude;
+  return coord;
+}
+
+@interface PGFormule : NSObject { }
+
++ (CoordsUTM) LL2UTM:(double)Lt:(double)Lg:(int)ZoneNumber;
++ (CoordsLL)  UTM2LL:(double)UTMNorthing:(double)UTMEasting;
+
++ (CoordsUTM) PixelToUtm:(CGPoint)Point withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone;
++ (CoordsLL) PixelToLatLong:(CGPoint)Point withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone;
+
++ (PGBound) PixelToBoundUtm:(CGRect)PixBound withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)Size andZone:(int)Zone;
++ (PGBound) PixelToBoundLatLong:(CGRect)PixBound withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)Size andZone:(int)Zone;
+
++ (CGPoint) UtmToPixels:(CoordsUTM)Utm withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone;
++ (CGPoint) LatLongToPixels:(CoordsLL)LatLong withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone;
+
+
+
+// deprecated
+
++ (void) UTMToPixelsInit:(double)z 
+					dizeta:(double)dz
+	  horizontalResolution:(int)horizontalResolution
+		verticalResolution:(int)verticalResolution
+				 mapCenter:(CLLocationCoordinate2D)center
+					  zone:(int)zone;
+
++ (CGPoint) LatLonToPixels:(CLLocationCoordinate2D)ll 
+		  horizontalResolution:(int)horizontalResolution
+			verticalResolution:(int)verticalResolution
+					 mapCenter:(CLLocationCoordinate2D)center
+						  zone:(int)zone;
+
++ (CGPoint) UTMToPixels:(CoordsUTM)utm
+   horizontalResolution:(int)horizontalResolution
+	 verticalResolution:(int)verticalResolution
+			  mapCenter:(CLLocationCoordinate2D)center
+				   zone:(int)zone;
+
++ (CLLocationCoordinate2D) pixelToLatLong:(int)pix_x pix_y:(int)pix_y 
+                                      lon:(double)lon lat:(double)lat 
+                                        z:(float)z 
+                                    dim_x:(int)dim_x dim_y:(int)dim_y 
+                                     zone:(int)zone;
+
+@end

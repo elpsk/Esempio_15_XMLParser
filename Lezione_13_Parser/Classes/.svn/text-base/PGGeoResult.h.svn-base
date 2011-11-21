@@ -1,0 +1,64 @@
+//
+//  Result.h
+//  tc
+//
+//  Created by Gianluca Folloni on 04/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+#import <UIKit/UIKit.h>
+
+
+enum {
+  PGGeoOutCodeOk = 0,
+  PGGeoOutCodeNo,
+  PGGeoOutCodeLocotions,
+  PGGeoOutCodeStreets,
+  PGGeoOutCodeGps
+} PGGeoOutCode;
+
+
+@interface PGGeoResult : NSObject <NSCopying, NSCoding> {
+  NSString *_Zona;
+  NSString *_Regione;
+  NSString *_Provincia;
+  NSString *_Comune;
+  NSString *_Frazione;
+  NSString *_Indirizzo;
+  
+  int _ZonaId;
+  int _RegioneId;
+  int _ProvinciaId;
+  int _ComuneId;
+  int _FrazioneId;
+  
+  int _Civico;
+  
+  CLLocationCoordinate2D _Posizione;  
+}
+
+@property (nonatomic, retain) NSString *Zona;
+@property (nonatomic, retain) NSString *Regione;
+@property (nonatomic, retain) NSString *Provincia;
+@property (nonatomic, retain) NSString *Comune;
+@property (nonatomic, retain) NSString *Frazione;
+@property (nonatomic, retain) NSString *Indirizzo;
+
+@property (nonatomic, assign) int ZonaId;
+@property (nonatomic, assign) int RegioneId;
+@property (nonatomic, assign) int ProvinciaId;
+@property (nonatomic, assign) int ComuneId;
+@property (nonatomic, assign) int FrazioneId;
+
+@property (nonatomic, assign) int Civico;
+
+@property (nonatomic, assign) CLLocationCoordinate2D Posizione;
+
+- (NSString*) Descrizione;
+- (NSString*) DescrizioneAC;
+- (NSString*) DescrizioneShort:(int)Width usingFont:(UIFont*)Font;
+
+@end
+

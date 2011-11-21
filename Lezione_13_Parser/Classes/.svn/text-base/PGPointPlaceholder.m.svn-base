@@ -1,0 +1,147 @@
+//
+//  PGPointPlaceholder.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 14/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGPointPlaceholder.h"
+#import "PGGeoResult.h"
+#import "PGMap.h"
+
+
+@interface PGPointPlaceholder (internals)
+  - (void) startLongPressCounter;
+  - (void) ReverseGeocode:(CLLocationCoordinate2D)Position;
+  - (void) setCalloutSubtitleData:(NSData*)Data;
+  - (CLLocationCoordinate2D) TouchesCoordinate:(UIEvent*)Event;
+@end
+
+@implementation PGPointPlaceholder
+
+@synthesize Geocode=m_Geocode;
+
+
+#pragma mark -
+#pragma mark Initialize
+#pragma mark -
+
+- (id) initWithPosition:(CLLocationCoordinate2D)Position withMap:(PGMap*)Map {
+
+  self = [super initWith:Position pointType:PGPointTypePlaceholder isDraggable:YES pos:CGPointMake(0, 0) inView:Map isTouchable:YES];
+
+  if ( self ) {
+    self.tag = PGPointTagPlaceholder;
+    
+    [self setCalloutTitle:@"Segnaposto"];
+
+    m_Geocode = [[PGGeoResult alloc] init];
+    
+    [self ReverseGeocode:Position];
+  }
+  
+  return self;
+}
+
+
+#pragma mark -
+#pragma mark Touches
+#pragma mark -
+
+- (void) touchesBegan:(NSSet*)t withEvent:(UIEvent*)event {
+  _IsLongPress = NO;
+  
+  if ( _Draggable ) {
+    NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
+    [dict setObject:t forKey:@"touches"];
+    [dict setObject:event forKey:@"event"];
+    
+    _TimerLongPress = [[NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(startLongPressCounter) userInfo:dict repeats:NO] retain];
+    
+    [dict release];
+  }
+}
+
+- (void) touchesMoved:(NSSet*)t withEvent:(UIEvent*)event {
+  if ( _IsLongPress ) [_Map setPoint:self :[self TouchesCoordinate:event]];
+}
+
+- (void) touchesEnded:(NSSet*)t withEvent:(UIEvent*)event {
+  if ( _TimerLongPress ) {
+    [_TimerLongPress invalidate];
+    [_TimerLongPress release];
+    _TimerLongPress = nil;
+  }
+  
+  if ( !_IsLongPress ) {
+    [super touchesEnded:t withEvent:event];
+    return;
+  }
+  
+  [self ReverseGeocode:[self TouchesCoordinate:event]];
+}
+
+
+#pragma mark -
+#pragma mark Protected
+#pragma mark -
+
+- (CLLocationCoordinate2D) TouchesCoordinate:(UIEvent*)Event {
+  UITouch *touch = [[[Event allTouches] allObjects] objectAtIndex:0];
+  
+  CGPoint pos = [touch locationInView:_Map];
+  pos.y -= (self.frame.size.height * 0.8);
+  
+  CoordsLL ll = [PGFormule PixelToLatLong:pos withCenter:[_Map getMapCenter] withZoom:[_Map getZoom] withSize:_Map.frame.size andZone:32];
+  return PGLocationCoordinate2DMake(ll.lat, ll.lon);
+}
+
+- (void) ReverseGeocode:(CLLocationCoordinate2D)Position {
+  
+  NSString *query = [NSString stringWithFormat:[_Map.Params.Servers objectAtIndex:PGServerReverse], Position.latitude, Position.longitude];
+  
+  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+  [dict setObject:NSStringFromSelector(@selector(setCalloutSubtitleData:)) forKey:@"selector"];
+  [dict setObject:query forKey:@"query"];
+  
+  PGHttpWrapper *http = [[[PGHttpWrapper alloc] initWithTarget:self] autorelease];
+  [http performSelectorOnMainThread:@selector(RequestData:) withObject:dict waitUntilDone:NO];
+}
+
+- (void) setCalloutSubtitleData:(NSData*)Data {
+  NSString *xml =[[NSString alloc] initWithData:Data encoding:NSUTF8StringEncoding];
+
+  [PGParser ReverseParser:m_Geocode inputXml:xml];
+  
+  if ( !_Callout ) [super setCalloutSubtitle:[m_Geocode Descrizione]];
+  else [_Callout.SubTitle setText:[m_Geocode Descrizione]];
+  
+  [xml release];
+}
+
+- (void) startLongPressCounter {
+  if ( !_TimerLongPress ) return;
+  
+  [_Callout ForceHiding:YES];
+  
+  _IsLongPress = YES;
+
+  NSDictionary *dict = [_TimerLongPress userInfo];
+  [self touchesMoved:[dict objectForKey:@"touches"] withEvent:[dict objectForKey:@"event"]];
+  
+  if ( _TimerLongPress ) {
+    [_TimerLongPress invalidate];
+    [_TimerLongPress release];
+    _TimerLongPress = nil;
+  }
+}
+
+- (void)dealloc {
+  if ( m_Geocode ) [m_Geocode release];
+  
+  [super dealloc];
+}
+
+
+@end

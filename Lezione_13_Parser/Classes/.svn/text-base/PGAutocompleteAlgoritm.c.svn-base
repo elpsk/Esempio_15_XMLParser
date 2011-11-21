@@ -1,0 +1,173 @@
+/*
+ *  PGAutocompleteAlgoritm.c
+ *  PGIPHONE
+ *
+ *  Created by Gianluca Folloni on 20/07/11.
+ *  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+ *
+ */
+
+#include "PGAutocompleteAlgoritm.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+
+const int UnknownId = -1;
+
+
+int LoadArray(PGLocT **Array, const char *FileName) {
+
+  FILE *file = fopen(FileName, "r");
+  if ( !file ) return UnknownId;
+
+  fseek(file , 0 , SEEK_END);
+  int size = ftell(file);
+  rewind(file);
+
+  char *buffer = (char*)calloc(sizeof(char), size);
+  if ( !buffer ) {
+    fclose(file);
+    return 0;
+  }
+
+  if ( fread(buffer, sizeof(char), size, file) != size ) {
+    fclose(file);
+    free(buffer);
+    return 0;
+  }
+  
+  char *find = NULL;
+  
+  int idx = UnknownId, nlines = 0, bpos = 0;
+  
+  while ( (find = strchr(&buffer[bpos], '\n')) ) {
+    
+    int blen = (int)(find - &buffer[bpos]);
+    
+    char line[blen + 1];
+    memset(line, 0x00, blen + 1);
+    strncpy(line, &buffer[bpos], blen);
+    
+    if ( idx != UnknownId ) {
+      
+      int lpos = 0, el = UnknownId;
+      while ( (find = strchr(&line[lpos], '#')) ) {
+        
+        int llen = (int)(find - &line[lpos]);
+        
+        switch ( ++el ) {
+          case 0: strncpy((*Array)[idx].Plain,  &line[lpos], llen); break;
+          case 1: strncpy((*Array)[idx].Format, &line[lpos], llen); break;
+        }
+        lpos += (llen + 1);
+      }
+      if ( lpos < strlen(line) ) (*Array)[idx].Weight = atoi(&line[lpos]);
+    }
+    else {
+      nlines = atoi(line);
+      (*Array) = calloc(sizeof(PGLocT), nlines);
+    }
+
+    bpos += (blen + 1);
+    idx++;
+  }
+
+  fclose(file);
+  free(buffer);
+  
+  if ( idx != nlines ) return 0;
+  
+  return nlines;
+}
+
+int SearchBinary(const char *Key, PGLocT *Array, int NItem) {
+  int first = 0, last = NItem - 1;
+  
+  PGLocT *loc = NULL;
+  
+  while ( (last - first) > 1 ) {
+    int avg = (last + first) / 2;
+    
+    loc = &Array[avg];
+    
+    int cmp = 0;
+    if ( (cmp = strncmp(loc->Plain, Key, strlen(Key))) == 0 ) return avg;
+    else if ( cmp < 0 ) first = avg;
+    else last = avg;
+  }
+  
+  loc = &Array[first];
+  if ( strncmp(loc->Plain, Key, strlen(Key)) == 0 ) return first;
+  
+  loc = &Array[last];
+  if ( strncmp(loc->Plain, Key, strlen(Key)) == 0 ) return last;
+
+  return UnknownId;
+}
+
+int FindRange(const char *Key, PGLocT *Array, int NItem, int *First) {
+  int idx = (*First);
+  
+  while ( (*First) >= 0 ) {
+    PGLocT *loc = &Array[(*First) - 1];
+    if ( strncmp(Key, loc->Plain, strlen(Key)) != 0 ) break;
+    (*First)--;
+  }
+  
+  while ( ++idx < NItem ) {
+    PGLocT *loc = &Array[idx];
+    if ( strncmp(Key, loc->Plain, strlen(Key)) != 0 ) break;
+  }
+  
+  return idx - (*First);
+}
+
+int SearchDichotomic(const char *Key, PGLocT *Array, int NItem, int *First) {
+  (*First) = SearchBinary(Key, Array, NItem);
+  
+  if ( (*First) == UnknownId ) return 0;
+
+  return FindRange(Key, Array, NItem, First);
+}
+
+int Sort(const void *First, const void *Next)
+{
+  PGLocT *f = (PGLocT*)First;
+  PGLocT *n = (PGLocT*)Next;
+  
+  return (f->Weight - n->Weight);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

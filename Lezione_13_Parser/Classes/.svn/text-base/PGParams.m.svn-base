@@ -1,0 +1,84 @@
+//
+//  PGParams.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 25/10/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import "PGParams.h"
+#import "PGConfig.h"
+
+
+/**
+ * Classe per la configurazione dei parametri della mappa
+ */
+@implementation PGParams
+
+@synthesize Version=m_Version, Sito=m_Sito, Copies=m_Copies, Bounds=m_Bounds, Servers=m_Servers, MapIncr=m_MapIncr, ToClip=m_ToClip, Images=m_Images;
+@synthesize PointsForRegions = m_PointsForRegions, EnginePageSize=_EnginePageSize;
+
+/**
+ * Init con i valori di default
+ */
+- (id) init {
+  self = [super init];
+  if ( !self ) return nil;
+
+	// default setting parameters
+	super.latitude = 41.89484;  // La capitale
+	super.longitude = 12.49363;  // 
+	
+	super.zoom = 10; // zoom livello 10
+	//super.mapType  = PGMapTypeStandard;	// mappa standard
+	super.tileSize = 256;               // tile size, default, 256
+  
+  super.userRotationMinAngle = 30.0;
+  
+  m_Version = @"";
+	m_Sito    = @"iphone";
+	m_PointsForRegions = 100;
+  m_MapIncr = -1;
+  m_ToClip  = -1;
+  m_Copies  = [[NSMutableArray alloc] init];
+  m_Bounds  = [[NSMutableArray alloc] init];
+  m_Servers = [[NSMutableArray alloc] init];
+  m_Images = [[NSMutableArray alloc] init];
+
+	return self;
+}
+
+- (void) dealloc {
+  if ( m_Version ) [m_Version release];
+  if ( m_Sito    ) [m_Sito    release];
+  if ( m_Copies  ) [m_Copies  release];
+  if ( m_Bounds  ) [m_Bounds  release];
+  if ( m_Servers ) [m_Servers release];
+  if ( m_Images  ) [m_Images release];
+  
+	[super dealloc];
+}
+
+- (NSURL*) getDefaultUrl {
+	return [[[NSURL alloc] initWithString:[PGConfig GetKey:@"PgMapView" ofFile:@"Config"]] autorelease];
+}
+
+- (void) setSito:(NSString *)SitoIn {
+  m_Sito = SitoIn;
+}
+
+- (void) setLat:(double)Latitude {
+  [super setLatitude:Latitude];
+}
+
+- (void) setLon:(double)Longitude {
+  [super setLongitude:Longitude];
+}
+
+- (void) setClipsToBounds:(BOOL)ToClip {
+  m_ToClip = ToClip;
+}
+
+@end
+
+

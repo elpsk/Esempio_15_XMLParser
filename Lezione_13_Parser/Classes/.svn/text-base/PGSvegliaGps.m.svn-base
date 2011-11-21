@@ -1,0 +1,87 @@
+//
+//PGSvegliaGps.m
+//PGIPHONE
+//
+//Created by Alberto Pasca on 07/09/11.
+//Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGSvegliaGps.h"
+#import "PGDevice.h"
+#import "PGFormule.h"
+
+@interface PGSvegliaGps (private)
+- (BOOL) CheckBackgroundAvailability;
+- (void) DisableBadge;
+@end
+
+@implementation PGSvegliaGps
+
+@synthesize Distance=_Distance, AudioFile=_AudioFile, CustomText=_CustomText; 
+@synthesize Destination=_Destination, Delegate=_Delegate, AlreadyNotified=_AlreadyNotified;
+
+- (void) StartSveglia {
+  _isBackgroundSupported = [self CheckBackgroundAvailability];
+  if (!_isBackgroundSupported) return;
+  
+  _Distance = 1000;
+  _AudioFile = UILocalNotificationDefaultSoundName;  // MAX 30 SECONDS!  
+  _AlreadyNotified = NO;
+  _CustomText = @"Sei arrivato!";
+}
+
+- (BOOL) CheckBackgroundAvailability {
+  UIDevice *dev = [UIDevice currentDevice];
+  if ( [dev respondsToSelector:@selector(isMultitaskingSupported)] ) {
+    return YES;
+  }
+  return NO;
+}
+
+- (void) CheckLocation:(CLLocationCoordinate2D)GpsPosition andDest:(CLLocationCoordinate2D)DestPosition {
+
+  float dist = [PGFormule CalculateDistanceFromCurrent:GpsPosition andDestination:DestPosition];
+  
+  if ( dist >= _Distance ) return;
+  if ( _AlreadyNotified  ) return;
+
+  if ( [PGDevice IsIosAvailableClass:@"UILocalNotification" andSelector:nil] &&
+       [[UIApplication sharedApplication] respondsToSelector:@selector(applicationState)] &&
+       [UIApplication sharedApplication].applicationState == UIApplicationStateBackground ) {
+    
+    UILocalNotification *_NotificaSveglia = [[UILocalNotification alloc] init];
+    
+    _NotificaSveglia.fireDate = [NSDate dateWithTimeIntervalSinceNow:.5];
+    _NotificaSveglia.timeZone = [NSTimeZone defaultTimeZone];
+    _NotificaSveglia.alertBody = _CustomText;
+    _NotificaSveglia.alertAction = @"Apri!";
+    _NotificaSveglia.soundName = _AudioFile;
+    
+    [[UIApplication sharedApplication] scheduleLocalNotification:_NotificaSveglia];
+    
+    [_NotificaSveglia release];
+    
+    if ( [_Delegate respondsToSelector:@selector(NotificationAppeared:andStatus:)] ) {
+      [_Delegate NotificationAppeared:self andStatus:0];
+      _AlreadyNotified = YES;
+    }
+    
+  } else {
+    if ( [_Delegate respondsToSelector:@selector(NotificationAppeared:andStatus:)] ) {
+      [_Delegate NotificationAppeared:self andStatus:1];
+      _AlreadyNotified = YES;
+    }
+  }
+  
+}
+
+#pragma mark -
+#pragma mark MEMORY
+#pragma mark -
+
+- (void) dealloc {
+  [super dealloc];
+}
+
+@end
+

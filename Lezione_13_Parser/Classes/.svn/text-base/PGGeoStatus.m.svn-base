@@ -1,0 +1,29 @@
+//
+//  PGGeoStatus.m
+//  PGIPHONE
+//
+//  Created by Giovanni Catapano on 06/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGGeoStatus.h"
+
+
+@implementation PGGeoStatus
+@synthesize Outcode=_Outcode, LevelCoord=_LevelCoord, NumRes=_NumRes;
+
+- (id) init {
+  self = [super init];
+  if ( !self ) return nil;
+  
+  _Outcode = 0; _LevelCoord = 0; _NumRes = 0;
+  
+  return self;
+}
+
+- (void) dealloc {
+  
+  [super dealloc];
+}
+
+@end

@@ -1,0 +1,34 @@
+//
+//  PGPlace.h
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 11/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreFoundation/CoreFoundation.h>
+#import "PGPlaceData.h"
+#import "PGParams.h"
+
+@interface PGPlace : NSOperation {
+	NSMutableArray *m_Comuni;
+	NSMutableArray *m_Frazioni;
+	NSMutableArray *m_Dugs;
+	NSMutableArray *m_risultati;
+	NSMutableArray *m_geoResult;
+	NSMutableArray *m_lbsRsl;
+	NSMutableArray *m_lbsRslTmp;
+	NSString *m_location;
+	NSString *dug;
+	
+	int lastQueryLength;
+	int dugFound;	// 0 = dug non trovato. 1 = verifica se la stringa corrisponde ad un dug. 2 = dug trovato
+	NSString *lastQuery;
+	PGParams *m_Params;
+}
+
+- (id) initWithLBSParams:(PGParams *)params;
+- (NSMutableArray *) searchLocations:(NSString *) query;
+
+@end

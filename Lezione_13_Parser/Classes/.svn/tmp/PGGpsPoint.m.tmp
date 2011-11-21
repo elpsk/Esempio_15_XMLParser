@@ -1,0 +1,72 @@
+//
+//  PGGpsPoint.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 04/04/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGGpsPoint.h"
+#import "PGMap.h"
+
+
+@interface PGGpsPoint (Internals)
+  - (void) dealloc;
+@end
+
+@implementation PGGpsPoint
+
+@synthesize Circle=m_Circle;
+
+- (id) initWithCoord:(CLLocation*)Coord inView:(UIView*)Delegate withAccuracy:(float)Accuracy andZoom:(float)Zoom withGps:(PGGps*)Gps {
+  self = [super initWith:Coord.coordinate pointType:PGPointTypeLocation isDraggable:NO pos:CGPointMake(0, 0) inView:Delegate isTouchable:NO];
+  if ( !self ) return nil;
+
+  NSMutableDictionary *circleParams = [NSMutableDictionary dictionary];
+  [circleParams setObject:[NSNumber numberWithFloat:Accuracy] forKey: @"defaultRadius"];
+  [circleParams setObject:[UIColor blueColor] forKey: @"color"];
+  [circleParams setObject:[NSNumber numberWithFloat: 0.1] forKey: @"opacity"];
+  [circleParams setObject:[UIColor blueColor] forKey: @"borderColor"];
+  [circleParams setObject:[NSNumber numberWithInt: 3] forKey: @"borderWidth"];
+  [circleParams setObject:[NSNumber numberWithFloat: 0.4] forKey: @"borderOpacity"];
+  [circleParams setObject:[NSNumber numberWithBool: YES] forKey:@"useMeters"];
+  [circleParams setObject:[NSNumber numberWithFloat: 4.0] forKey:@"defaultZoom"];
+  [circleParams setObject:[NSNumber numberWithFloat: 800.0] forKey:@"maxRadius"];
+  [circleParams setObject:[NSNumber numberWithFloat: 5.0] forKey:@"minRadius"];
+
+  m_Circle = [[PGCircle alloc] initWithParams:circleParams];
+  m_Circle.Delegate = self;
+  [m_Circle enableAnimation];
+  [m_Circle setZoom:Zoom];
+  
+  m_Gps = Gps;
+  
+  return self;
+}
+
+- (void) setHidden:(BOOL)Value {
+  super.hidden = m_Circle.hidden = Value;
+}
+
+<<<<<<< .mine
+- (void) CircleHasRedrawn:(PGCircle *)circle withRect:(CGRect)rect {
+  if ( !m_Gps.CompassEnabled || rect.size.width <= 50) {
+    m_CompassView.hidden = YES;
+    return;    
+  }
+  m_CompassView.hidden = YES;
+  [m_CompassView UpdateRect:rect];
+=======
+- (void) CircleIsRedrawing:(PGCircle *)circle {
+>>>>>>> .r738
+}
+
+- (void) CircleHasRedrawn:(PGCircle *)circle {
+}
+
+- (void) dealloc {
+  if ( m_Circle      ) [m_Circle      release];
+  [super dealloc];
+}
+
+@end

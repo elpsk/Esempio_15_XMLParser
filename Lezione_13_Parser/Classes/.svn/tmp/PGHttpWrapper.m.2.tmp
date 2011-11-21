@@ -1,0 +1,55 @@
+//
+//  HttpWrapper.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 24/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGHttpWrapper.h"
+#import <CFNetwork/CFNetwork.h>
+
+
+@implementation PGHttpWrapper
+
+
+- (id) initWithTarget:(id)Target {
+  self = [super init];
+  if ( !self ) return nil;
+  
+  m_Target = Target;
+  m_Connection = [NSURLConnection alloc];
+  return self;
+}
+
+- (void) RequestData:(NSDictionary*)Params  {
+  m_Selector = NSSelectorFromString([Params objectForKey:@"selector"]);
+	NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:[Params objectForKey:@"query"]]];
+	[m_Connection initWithRequest:request delegate:self];
+}
+
+- (void)connection:(NSURLConnection*)connection didReceiveResponse:(NSURLResponse*)response {
+	m_Data = [[NSMutableData alloc] initWithData:[NSMutableData data]];
+}
+
+- (void)connection:(NSURLConnection*)connection didReceiveData:(NSData*)myData {
+  [m_Data appendData:myData];
+}
+
+- (void)connection:(NSURLConnection*)connection didFailWithError:(NSError*)error {
+  NSLog(@"%@", [error localizedDescription]);
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection*)connection {  
+  [m_Target performSelector:m_Selector withObject:m_Data];
+  [m_Data release];
+  m_Data = nil;
+  
+}
+
+- (void) dealloc {
+  [m_Connection release];
+	[super dealloc];
+}
+
+@end

@@ -1,0 +1,70 @@
+//
+//  PGClippedView.m
+//  PGIPHONE
+//
+//  Created by Giovanni Catapano on 08/11/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGClippedView.h"
+#include <QuartzCore/QuartzCore.h>
+
+
+@implementation PGClippedView
+
+- (id)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        // Initialization code
+    }
+    return self;
+}
+
+/*
+// Only override drawRect: if you perform custom drawing.
+// An empty implementation adversely affects performance during animation.
+- (void)drawRect:(CGRect)rect
+{
+    // Drawing code
+}
+*/
+
+- (BOOL) isUserInteractionEnabled {
+  return YES;
+}
+
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+  return [self doHitTestForPoint:point];
+}
+
+- (BOOL) doHitTestForPoint:(CGPoint)point {
+	CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
+	CGBitmapInfo info = kCGImageAlphaPremultipliedLast;
+  
+	UInt32 bitmapData[1];
+	bitmapData[0] = 0;
+  
+	CGContextRef context =
+      CGBitmapContextCreate(bitmapData,
+                        1,
+                        1,
+                        8,
+                        4,
+                        colorspace,
+                        info);
+  
+	CGContextTranslateCTM(context, -point.x, -point.y);
+	[self.layer renderInContext:context];
+  
+	CGContextFlush(context);
+  
+	BOOL res = (bitmapData[0] != 0);
+  
+	CGContextRelease(context);
+	CGColorSpaceRelease(colorspace);
+  
+	return res;
+}
+
+@end

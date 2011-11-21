@@ -1,0 +1,631 @@
+//
+//  PGPlace.m
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 11/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGPlace.h"
+#import "PGParser.h"
+#import "PGConfig.h"
+
+
+#define DEBUG(s) NSLog(@"%s '%@'", __FUNCTION__, s)
+#define RESET_LIST(list) if (list) { [list release]; list = nil; }
+
+#define SEARCH_RESULTS	10
+
+@interface PGPlace (internals)
+
+int finderSortWithLocale(id string1, id string2, void *locale);
+CFComparisonResult PGPlaceDataCompare ( PGPlaceData *val1, PGPlaceData *val2, void *context);
+- (void) upDownSearch:(NSString *)query resultsList:(NSMutableArray *)results onList:(NSMutableArray *)list fromIndex:(int)index;
+- (NSMutableArray *)	orderResults:(NSMutableArray *) places;
+- (NSMutableArray *)	searchComuni:(NSString *) query;
+- (NSMutableArray *)	searchFrazioni:(NSString *) query;
+- (NSMutableArray *)	searchCivico:(NSString *) query andLocation:(NSString *)location;
+- (NSMutableArray *)	getResult:(NSString *) query fromList:(NSMutableArray *) list;
+- (NSEnumerator *)		readFile:(NSString *) fileName;
+- (void) lbsRequest:(NSString *) query;
+@end
+
+@implementation PGPlace
+
+#pragma mark -
+#pragma mark life cycle
+
+- (id) initWithLBSParams:(PGParams *)params
+{
+	[self init];
+	m_Params = [params retain];
+	return self;
+}
+
+- (id) init
+{
+	self = [super init];
+	
+	if (self != nil)
+	{		
+		m_Comuni		= [[NSMutableArray alloc] init];
+		m_Frazioni	=	[[NSMutableArray alloc] init];
+		m_Dugs			=	[[NSMutableArray alloc] init];
+		m_geoResult = [[NSMutableArray alloc] init];
+		m_risultati = [[NSMutableArray alloc] init];
+		
+		lastQuery = [[NSString alloc] init];
+		m_lbsRsl = nil;
+		m_lbsRslTmp = nil;
+		
+		m_location = nil;
+		dug = nil;
+		dugFound = 0;
+	}
+	
+	return self;
+}
+
+- (void) dealloc
+{
+	if (m_Comuni != nil) [m_Comuni release];
+  if (m_Frazioni != nil) [m_Frazioni release];
+	if (m_Dugs != nil) [m_Dugs release];
+	if (m_geoResult != nil) [m_geoResult release];
+	if (m_risultati != nil) [m_risultati release];
+	if (m_lbsRsl != nil) [m_lbsRsl release];
+	if (m_lbsRslTmp != nil) [m_lbsRslTmp release];
+	
+	if (lastQuery != nil) [lastQuery release];
+	if (m_Params != nil) [m_Params release];
+	
+	if (m_location != nil) [m_location release];
+	
+	[super dealloc];
+}
+
+- (void)main
+{
+	NSString * tmp;
+	NSStringEncoding encoding;
+	NSError * error;
+	
+	NSString *filename = [PGConfig GetBundleFile:@"iPhone_dugs" ofType:@"txt"];
+	NSArray * lines = [[NSString stringWithContentsOfFile:filename usedEncoding:&encoding error:&error] componentsSeparatedByString:@"\r\n"];
+	
+	NSArray *sortedArray = [lines sortedArrayUsingFunction:finderSortWithLocale	context:[NSLocale currentLocale]];
+	
+	NSEnumerator *nseDugs = [sortedArray objectEnumerator]; 
+	while (tmp = [nseDugs nextObject]) 
+	{
+		PGPlaceData * data = [[PGPlaceData alloc] initWithParams:tmp addWeight:0];
+		[m_Dugs addObject:data];
+		[data release];
+	}
+	
+	NSEnumerator *nseLocations = [self readFile:@"iPhone_localita_it"];
+	while(tmp = [nseLocations nextObject]) 
+	{
+		NSArray * value = [tmp componentsSeparatedByString:@"#"];
+		// check per verificare validità della stringa (nome#peso)
+		if ([value count] == 2) {
+			PGPlaceData * data = [[PGPlaceData alloc] initWithParams:[value objectAtIndex:0] addWeight:[[value objectAtIndex:1] intValue]];
+			[m_Comuni addObject:data];
+			[data release];
+		}
+	}
+	
+	NSEnumerator *nseFrazioni = [self readFile:@"iPhone_frazioni_it"];
+	while (tmp = [nseFrazioni nextObject]) 
+	{
+		NSArray * value = [tmp componentsSeparatedByString:@"#"];
+		// check per verificare validità della stringa (nome#peso)
+		if ([value count] == 2)
+		{
+			PGPlaceData * data = [[PGPlaceData alloc] initWithParams:[value objectAtIndex:0] addWeight:[[value objectAtIndex:1] intValue]];
+			[m_Frazioni addObject:data];
+			[data release];
+		}
+	}
+}
+
+- (NSMutableArray *) searchLocations:(NSString *) query
+{
+	// Al momento il file presenta tutti i caratteri in UPPERCASE quindi converto la stringa di query
+	query = [query uppercaseString];
+	
+	// Ricerca dei primi dieci risultati per l'autocomplete sui comuni
+	NSMutableArray *lista = [self getResult:query fromList:m_Comuni];
+	
+	// Se la ricerca porta ad un solo risultato, controllo che corrisponda realmente alla ricerca fatta (CFArrayBSearchValues non è perfetto)
+	// Se non ho nessun risultato dalla lista dei comuni (m_Locations) eseguo la ricerca nella lista delle frazioni (m_Frazioni)
+	if ([lista count] == 1) 
+	{
+		// Cerco query nel Nome presente in results.
+		NSRange r = [[[lista objectAtIndex:0] getNamePlace] rangeOfString:query options:NSDiacriticInsensitiveSearch];
+		// Query deve essere presente partendo dall'inizio della stringa del Nome
+		if (r.location == 0)
+		{
+			if (dugFound > 0)	dugFound = 0;
+			m_location = [query retain];
+			//return  [self orderResults:lista];			
+			// Si deve chiamare la orderResults poiché con questo metodo ottengo una lista di sole stringhe, da inviare alla PGTableView e non
+			// una lista di PGGeoResult
+						lista = [self orderResults:lista];			
+						NSMutableArray *fraz = [self searchFrazioni:query];
+						int totFrazione = [fraz count];
+						if (totFrazione > (SEARCH_RESULTS - 1))
+							totFrazione = (SEARCH_RESULTS - 1);
+						for (int i = 0; i < totFrazione; i++)
+							[lista addObject:[fraz objectAtIndex:i]];
+						return lista;		
+		}
+		else 
+			return [self searchFrazioni:query];
+	}
+	
+	// Nessun risultato trovato nei comuni
+	if ([lista count] == 0)
+		return [self searchFrazioni:query];
+	
+	// Risultati multipli
+	if (dugFound > 0)	dugFound = 0;
+	m_location = [query retain];
+	//return [self orderResults:lista];
+	
+	// Si deve chiamare la orderResults poich√© con questo metodo ottengo una lista di sole stringhe, da inviare alla PGTableView e non
+	// una lista di PGGeoResult
+	lista = [self orderResults:lista];	
+	
+	// Se i risultati dei comuni sono meno del massimo numero di risultati visualizzabili, riempio gli spazi con eventuali frazioni
+		int emptyPlace = SEARCH_RESULTS - [lista count];
+		if (emptyPlace < 10) 
+		{
+			NSMutableArray *fraz = [self searchFrazioni:query];
+			int totFrazione = [fraz count];
+			if (totFrazione > emptyPlace)
+				totFrazione = emptyPlace;
+			for (int i = 0; i < totFrazione; i++)
+				[lista addObject:[fraz objectAtIndex:i]];
+		}
+		return lista;
+	
+}
+
+- (NSMutableArray *) searchFrazioni:(NSString *) query
+{
+  NSMutableArray *listaFrazioni = [self getResult:query fromList:m_Frazioni];
+	
+	// Se la ricerca porta ad un solo risultato, controllo che corrisponda realmente alla ricerca fatta (CFArrayBSearchValues non è perfetto)
+	if ([listaFrazioni count] == 1) 
+	{
+		// Cerco query nel Nome presente in results.
+		NSRange r = [[[listaFrazioni objectAtIndex:0] getNamePlace] rangeOfString:query options:NSDiacriticInsensitiveSearch];
+		// Query deve essere presente partendo dall'inizio della stringa del Nome
+		if (r.location == 0)
+		{
+			if (dugFound > 0)	dugFound = 0;
+			m_location = [query retain];
+			return [self orderResults:listaFrazioni];
+		}
+		else {
+			NSArray * value = [m_location componentsSeparatedByString:@" "];
+			if ([[value objectAtIndex:[value count] - 1] isEqualToString:@""])
+				m_location = [[m_location substringToIndex:(m_location.length - 1)] retain];
+			else
+			{
+				NSString *tmp = [value objectAtIndex:([value count]-1)];
+				if (tmp.length == 1)
+					m_location = [[m_location substringToIndex:(m_location.length - 2)] retain];
+			}
+			return [self searchCivico:query andLocation:m_location]; // ricerca nei dugs
+		}
+	}
+	
+	// Risultati multipli
+	if (dugFound > 0)	dugFound = 0;
+	m_location = [query retain];
+	return [self orderResults:listaFrazioni];
+}
+
+// Cerco nella query il dug
+- (NSMutableArray *) searchCivico:(NSString *) query andLocation:(NSString *) location
+{
+	query = [query lowercaseString];
+	location = [location lowercaseString];
+	
+	// Elimino dalla stringa di query la Località e lo spazio immediatamente successivo
+	query = [query stringByReplacingOccurrencesOfString:[NSString stringWithFormat:@"%@ ", location] withString:@""];
+	// Divido in token la query
+	NSArray * value = [query componentsSeparatedByString:@" "];
+	
+	// Verifico se l'intera stringa di query ha subito delle modiviche (cancellazioni o sostituzioni di caratteri)
+	// In questi casi devo resettare le strutture dati utilizzate per filtrare i risultati del LBS al fine di ricominciare
+	// le operazioni di ricerca
+	if (lastQueryLength > [query length]) 
+	{
+		if ([query length] <= 1) {
+			RESET_LIST(m_lbsRsl);
+		}
+		
+		if (m_lbsRslTmp) 
+		{
+			[m_lbsRslTmp release];
+			m_lbsRslTmp = nil;
+			lastQueryLength = [query length];
+			if (lastQuery) 
+			{
+				[lastQuery release];
+				lastQuery = nil;
+			}
+			lastQuery = [query retain];
+		}
+	}
+	else if ((lastQueryLength == [query length]) && ![lastQuery isEqualToString:query])
+	{
+		if (m_lbsRslTmp) 
+		{
+			[m_lbsRslTmp release];
+			m_lbsRslTmp = nil;
+			lastQueryLength = [query length];
+			if (lastQuery) 
+			{
+				[lastQuery release];
+				lastQuery = nil;
+			}
+			lastQuery = [query retain];
+		}
+	}
+	else 
+	{
+		lastQueryLength = [query length];
+		if (lastQuery) 
+		{
+			[lastQuery release];
+			lastQuery = nil;
+		}
+		lastQuery = [query retain];
+	}
+	
+	// Verifico che la sub stringa della query, in cui è presente il dug, non sia cambiata.
+	// In questo caso devo rieseguire la ricerca del dug
+	if (dugFound == 2 && ![[value objectAtIndex:0] isEqualToString:dug])
+	{
+		dugFound = 0;
+		RESET_LIST(m_lbsRsl);
+	}
+	
+	// Ricerca del dug nella stringa di query
+	if (dugFound < 2) 
+	{
+		// Per la ricerca del dug, suppongo che in questo punto dell'algoritmo la query sia nella forma:
+		// (comune/frazione) (spazio) dug (eventuale spazio)
+		// Concentro quindi la ricerca del dug sull'ultima sotto stringa della query.
+		// Nel caso ci sia uno spazio alla fine, cerco nella penultima sotto stringa poiché
+		// componentsSeparatedByString può trovare come ultima sotto stringa la stringa vuota
+		
+		// Il dug, se presente, sarà nella prima sotto stringa ricavata dalla query senza località
+		NSString *subString = [value objectAtIndex:0];
+		NSMutableArray *dugs = [self getResult:subString fromList:m_Dugs];
+		
+		if ([dugs count] > 1)
+		{
+			dugFound = 1;
+			for (int i = 0; i < [dugs count]; i++) 
+			{
+				if ([subString isEqualToString:[[dugs objectAtIndex:i] getNamePlace]])
+				{
+					dug = [[dugs objectAtIndex:i] getNamePlace];
+					dugFound = 2;
+					break;
+				}
+			}
+			// Se non ho ancora trovato la corrispondenza esatta con un dug e non ho uno spazio dopo la sotto stringa che sto analizzando
+			// ritorno i suggerimenti dei possibili dug, altrimenti concludo la ricerca
+			if (dugFound == 1 && [value count] == 1) 
+			{
+				[m_risultati removeAllObjects];
+				for (int j = 0; j < [dugs count]; j++) {
+					[m_risultati addObject:[NSString stringWithFormat:@"%@ %@", location, [[dugs objectAtIndex:j] getNamePlace]]]; 
+				}
+				return m_risultati;
+			}
+		}
+		
+		else if ([dugs count] == 1 && [value count] == 1)
+		{
+			if (![subString isEqualToString:[[dugs objectAtIndex:0] getNamePlace]])
+			{
+				dugFound = 0;
+			}
+		}
+		else dugFound = 0;
+	}
+
+#pragma mark lbs query
+	// Se il dug è stato trovato, verifico che dopo il dug (e lo spazio) sia presente una stringa con più di un carattere
+	// ed eseguo la chiamata al LBS.
+	// Se non è stato trovato il dug (dugFound = 0), eseguo ugualmente la chiamata LBS, ma sempre se ho una parola con più di un carattere
+	if ( (dugFound == 2 && [value count] > 1) )
+	{
+		NSString *subString = [value objectAtIndex:1];
+		
+		// Verifico la lunghezza della stringa successiva al dug e che non sia già in corso una chiamata al LBS
+		// Questa seconda verifica viene fatta controllando che la strutta m_lbsRsl non sia stata inizializzata.
+		// L'inizializzazione avviene nel metodo che esegue la chiamata LBS
+		if (subString.length > 1 && !m_lbsRsl) 
+		{
+			NSString *lbsQuery = [NSString stringWithFormat:@"&open=%@&topo=%@&topotipo=0", location, subString];
+			[self performSelectorOnMainThread:@selector(lbsRequest:) withObject:lbsQuery waitUntilDone:NO];
+		}
+		else if (subString.length <= 1) 
+			RESET_LIST(m_lbsRsl);
+	}
+	else if (dugFound == 0)
+	{
+		// Analizzo solo la prima sotto stringa
+		NSString *subString = [value objectAtIndex:0];
+
+		if (subString.length > 1 && !m_lbsRsl) 
+		{
+			NSString *lbsQuery = [NSString stringWithFormat:@"&open=%@&topo=%@&topotipo=0", location, subString];
+			[self performSelectorOnMainThread:@selector(lbsRequest:) withObject:lbsQuery waitUntilDone:NO];
+		}
+		else if (subString.length <= 1) 
+			RESET_LIST(m_lbsRsl);
+	}
+#pragma mark filter
+	// Se la chiamata al LBS si è conclusa, comincio a filtrare i risultati a seconda della query in digitazione
+	// Per ottimizzare la procedura, lavoro su una copia temporanea dei risultati, in questo modo se l'utente cancella
+	// dei caratteri nella query o effettua delle sostituzioni dei caratteri, non devo eseguire nuovamente la chiamata
+	// al LBS, ma semplicemente azzerare la lista temporanea
+	if ([m_lbsRsl count] > 0)
+	{
+		// la lista temporanea dei risultati del lbs non è inizializzata solo quando viene eseguita una richiesta al lbs
+		// copio quindi il risultato della richesta nella lista temporanea 
+		if (m_lbsRslTmp == nil) {
+			m_lbsRslTmp = [m_lbsRsl copy];
+		}
+		else 
+		{
+			[m_lbsRslTmp release];
+			m_lbsRslTmp = nil;
+			m_lbsRslTmp = [m_geoResult copy];
+		}
+
+		[m_geoResult removeAllObjects];
+		[m_risultati removeAllObjects];
+		
+		// Ciclo elementi della query dopo il dug (se presente)
+		// Cerco negli indirizzi degli oggetti PGGeoResult restituiti dal LBS la stringa di query
+		int start = 0;
+		if (dugFound == 2) start = 1;
+		
+		// Lista temporanea dove inserire i PGGeoResult in cui la query è presente, ma il dug √® differente da quello cercato
+		NSMutableArray *dugDifferenti = [NSMutableArray array];
+		
+		for (int j = start; j < [value count]; j++)
+		{
+			NSString *q = [[value objectAtIndex:j] lowercaseString];
+			// Ciclo risultati LBS filtrati da ricerche precedenti
+			for (PGGeoResult *geo in m_lbsRslTmp) 
+			{
+				NSArray *indirizzo = [[geo.Indirizzo lowercaseString] componentsSeparatedByString:@" "];
+				// Ciclo sotto stringhe del singolo risultato trovato dal LBS
+				for (int i = 1; i < [indirizzo count]; i++) 
+				{
+					NSString *tmp = [indirizzo objectAtIndex:i];
+					if (tmp.length >= q.length)
+					{
+						NSRange r = [tmp rangeOfString:q];
+						// Query deve essere presente partendo dall'inizio della stringa
+						if (r.location == 0)
+						{
+							// Se la sotto stringa della query che sto analizzando è l'ultima presente nella query stessa e non è
+							// uguale alla stringa vuota, salvo il risultato.
+							// In caso conrtrario verifico se le altre sotto stringhe della query sono presenti nella stringa
+							// risultato del LBS che sto analizzando
+							if (( [[value objectAtIndex:([value count] - 1)] isEqualToString:@""] ) || 
+									(j == ([value count] - 1))) 
+							{
+								tmp = [indirizzo objectAtIndex:0];
+								if ([tmp isEqualToString:dug])
+									[m_geoResult addObject:geo];
+								else
+									[dugDifferenti addObject:geo];
+								break;
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+		
+		[m_geoResult addObjectsFromArray:dugDifferenti];
+		for (int i = 0; i < SEARCH_RESULTS; i++)
+		{
+			if (i < [m_geoResult count]) {
+				PGGeoResult *geo = [m_geoResult objectAtIndex:i];
+				[m_risultati addObject:[NSString stringWithFormat:@"%@ (%@) %@", geo.Comune, geo.Provincia, geo.Indirizzo]];
+			}
+		}
+			
+		return m_risultati;
+	}
+	
+	return nil;
+}
+
+#pragma mark -
+#pragma mark INTERNAL METHODS
+
+- (NSEnumerator *) readFile:(NSString *) fileName
+{
+	NSStringEncoding encoding;
+	NSError * error;
+	
+	NSString *filename =[PGConfig GetBundleFile:fileName ofType:@"txt"];
+	NSArray * lines = [[NSString stringWithContentsOfFile:filename usedEncoding:&encoding error:&error] componentsSeparatedByString:@"\n"];
+	
+	NSArray *sortedArray = [lines sortedArrayUsingFunction:finderSortWithLocale	context:[NSLocale currentLocale]];
+	
+	return [sortedArray objectEnumerator]; 
+}
+
+- (void) lbsRequest:(NSString *) query
+{
+	NSMutableArray *geoRes = [NSMutableArray array];
+	NSMutableArray *gr = [NSMutableArray array];
+	
+	// LBS Query
+	DEBUG(query);
+	[PGParser LbsParser:query withConfig:m_Params withResult:geoRes];
+	for (PGGeoResult *geo in geoRes)
+		[gr addObject:geo];
+	
+	// Store LBS result
+  if (m_lbsRsl != nil)
+	{
+		[m_lbsRsl release];
+		m_lbsRsl = nil;
+		m_lbsRsl = [[NSMutableArray alloc] init];
+	}		
+	m_lbsRsl = [gr copy];
+	
+	// Clean up lists used for research 
+	[m_risultati removeAllObjects];
+	[m_geoResult removeAllObjects];
+	if (m_lbsRslTmp) {
+		[m_lbsRslTmp release];
+		m_lbsRslTmp = nil;
+	}
+	
+}
+
+#pragma mark -
+#pragma mark ALGORITMI
+
+- (NSMutableArray *) getResult:(NSString *) query fromList:(NSMutableArray *) list
+{
+	// Ricerca Binaria
+	PGPlaceData * data = [[PGPlaceData alloc] initWithParams:query addWeight:0];
+	
+	CFIndex indexResult = CFArrayBSearchValues( 
+																						 (CFArrayRef)list, 
+																						 CFRangeMake(0, [list count]), 
+																						 data, 
+																						 (CFComparatorFunction)PGPlaceDataCompare, nil);
+	
+	[data release];
+	
+	NSMutableArray * results = [NSMutableArray array];
+	
+	// Primo risultato trovato
+	if (!(indexResult < [list count])) return nil; 
+	[results addObject:[list objectAtIndex:indexResult]];
+	
+	[self upDownSearch:query resultsList:results onList:list fromIndex:indexResult];
+	
+	return results;
+}
+
+// Ordinamento secondi i pesi con BubbleSearch
+- (NSMutableArray *) orderResults:(NSMutableArray *) places
+{
+	if (places == nil) return nil;
+	int i, j;
+	PGPlaceData * temp;
+	
+	for (i = 0; i < ([places count] - 1); ++i)
+	{
+		for (j = 0; j < [places count]  - 1 - i; ++j )
+		{
+			if ([[places objectAtIndex:j] getWeight] > [[places objectAtIndex:(j+1)] getWeight])
+			{
+				temp = [places objectAtIndex:(j+1)];
+				
+				[places replaceObjectAtIndex:(j+1) withObject:[places objectAtIndex:j]];
+				
+				[places replaceObjectAtIndex:j withObject:temp];
+			}
+		}
+	}
+	
+	NSMutableArray * results = [NSMutableArray array];
+	// Ritorno massimo i primi x risultati, impostati in SEARCH_RESULTS
+	// Se non ho almeno un risultato, ritorno nil
+	if ([places count]) 
+	{
+		int tot = [places count];
+		if ([places count] > SEARCH_RESULTS)
+			tot = SEARCH_RESULTS;
+		for (i = 0; i < tot; i++) {
+			[results addObject:[[places objectAtIndex:i] getNamePlace]];
+		}
+		return results;
+	}
+	else
+		return  nil;
+}
+
+int finderSortWithLocale(id string1, id string2, void *locale)
+{
+	static NSStringCompareOptions comparisonOptions =
+	NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch |
+	NSWidthInsensitiveSearch | NSForcedOrderingSearch;
+	
+	NSRange string1Range = NSMakeRange(0, [string1 length]);
+	
+	return [string1 compare:string2
+									options:comparisonOptions
+                    range:string1Range
+									 locale:(NSLocale *)locale];
+}
+
+
+CFComparisonResult PGPlaceDataCompare ( PGPlaceData *val1, PGPlaceData *val2, void *context)
+{
+	return [[val1 getNamePlace] compare:[val2 getNamePlace] options:(NSAnchoredSearch | NSLiteralSearch | NSDiacriticInsensitiveSearch)];
+}
+
+- (void) upDownSearch:(NSString *)query resultsList:(NSMutableArray *)results onList:(NSMutableArray *)list fromIndex:(int)index
+{
+	// UP search
+	// Controllo da eseguire per evitare errori nel caso l'indice indexResult sia 0 e quindi i = -1
+	int i = index - 1;
+	if (i > 0) 
+	{
+		
+		while ([[[list objectAtIndex:i] getNamePlace] 
+						rangeOfString:query 
+						options:(NSAnchoredSearch | NSLiteralSearch | NSDiacriticInsensitiveSearch)].location != NSNotFound) 
+		{
+			[results addObject:[list objectAtIndex:i--]];
+			
+			// Testa della lista, esco dal ciclo
+			if (i < 0)
+				break;
+		}
+	}
+	
+	// DOWN search
+	// Controllo per evitare di accedere oltre la dimensione della lista
+	i = index + 1;
+	if (i < [list count]) 
+	{
+  	while ([[[list objectAtIndex:i] getNamePlace] 
+						rangeOfString:query 
+						options:(NSAnchoredSearch | NSLiteralSearch | NSDiacriticInsensitiveSearch)].location != NSNotFound)
+		{
+			[results addObject:[list objectAtIndex:i++]];
+			
+			// Fine della lista, esco dal ciclo
+			if (i >= [list count])
+				break;
+		}			
+	}
+}
+
+
+@end

@@ -1,0 +1,116 @@
+//
+//  PGRStep.h
+//  PGIphone
+//
+//  Created by Alberto Pasca on 21/10/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+
+/** StepState
+ *  Una enum contenente i tipi di step trovati durante un percorso
+ */
+typedef enum {
+	START = 0,
+	END,
+	STOP,
+	FERRYBOAT_IN,
+	FERRYBOAT_OUT,
+	CONTROLLED_ACCESS_IN,
+	CONTROLLED_ACCESS_CONTINUE,
+	CONTROLLED_ACCESS_OUT,
+	ROUNDABOUT_IN,
+	ROUNDABOUT_OUT,
+	FRONTAGE_IN,
+	FRONTAGE_OUT,
+	TURN
+} StepState;
+
+typedef enum {
+  TRAM = 0,
+  BUS,
+  METRO
+} Mezzo;
+
+@interface PGRStep : NSObject {
+	NSString		*m_Current;
+	NSString		*m_Country;
+	int					m_Cross;
+	NSString		*m_DestExit;
+	NSString		*m_DestSt;
+	int					m_Dir;
+	NSString		*m_Dsc;
+	BOOL				m_Ecop;
+	NSString		*m_Exit;
+	int					m_IdRstep;
+	NSString		*m_Loc;
+	int					m_Pdes;
+	int					m_Pt;
+	int					m_RbExit;
+	NSString		*m_State;
+	BOOL				m_Stlev;
+	BOOL				m_Through;
+	BOOL				m_Toll;
+	BOOL				m_Tunnel;
+	int					m_Turn;
+	float				m_X;
+	float				m_Y;
+	int					m_LastCoordIndex;
+	NSString    *m_ImageUrl;
+	CLLocationCoordinate2D m_Coord;
+  int         m_Fermate;
+  int         m_Frequenza;
+  NSString    *m_TipoMezzo;
+  NSString    *m_InfoLink;
+  NSString    *m_RouteType;
+  NSString    *m_ATMImage;
+}
+
+@property (readonly) int LastCoordIndex;
+
+@property (readonly) NSString									*Current;
+@property (readonly) NSString									*Country;
+@property (readonly) int											Cross;
+@property (readonly) NSString									*DestExit;
+@property (readonly) NSString									*DestSt;
+@property (readonly) int											Dir;
+@property (readonly) NSString									*Dsc;
+@property (readonly) BOOL											Ecop;
+@property (readonly) NSString									*Exit;
+@property (readonly) int											IdRstep;
+@property (readonly) NSString									*Loc;
+@property (readonly) int											Pdes;
+@property (readonly) int											Pt;
+@property (readonly) int											RbExit;
+@property (readonly) NSString									*State;
+@property (readonly) BOOL											Through;
+@property (readonly) BOOL											Toll;
+@property (readonly) BOOL											Tunnel;
+@property (readonly) int											Turn;
+@property (readwrite) CLLocationCoordinate2D	Coord;
+@property (nonatomic, retain) NSString        *ImageUrl;
+@property (readonly) int											Fermate;
+@property (readonly) int											Frequenza;
+@property (readonly) NSString 								*TipoMezzo;
+@property (readonly) NSString                 *InfoLink;
+@property (readonly) NSString                 *RouteType;
+@property (readonly) NSString                 *ATMImage;
+
+
+- (void) initRstep:current addCountry:(NSString *)country addCross:(int)cross addDestExit:(NSString *)destExit addDestSt:(NSString *)destSt addDir:(int)dir 
+            addDsc:(NSString *)dsc addEcop:(BOOL)ecop addExit:(NSString *)exit addId:(int)idRstep addLoc:(NSString *)loc addPdes:(int)pdes
+            addPt:(int)pt addRbExit:(int)rbExit addState:(NSString *)state addStlev:(BOOL)stlev addThrough:(BOOL)through addToll:(BOOL)toll
+            addTunnel:(BOOL)tunnel addTurn:(int)turn addX:(float)x addY:(float)y addLastCoordIndex:(int)lastCoordIndex
+            addMezzoType:(NSString*)mezzo addFermate:(int)fermate addFrequenza:(int)frequenza addInfolink:(NSString*)infoLink addRouteType:(NSString*)rt;
+
+- (NSString*) GetDescription;
+- (NSString*) GetATMDescription;
+- (NSString*) GetFormattedDistance;
+
+
+
+@end
+
+

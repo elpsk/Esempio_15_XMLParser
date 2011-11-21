@@ -1,0 +1,256 @@
+//
+//  PGCallout.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 16/11/2010.
+//  Copyright 2010 Cutaway SRL. All rights reserved.
+//
+
+#import <QuartzCore/QuartzCore.h>
+
+#import "PGCallout.h"
+#import "PGMap.h"
+#import "PgConfig.h"
+
+
+@interface PGCallout()
+  - (id) initWithFumetto:(UIView*)Fumetto andPuntatore:(UIImageView*)Puntatore toPoint:(id)Point;
+  - (CGSize) UpdateSize:(int)MapWidth;
+@end
+
+@implementation PGCallout
+
+@synthesize Title=_Title, SubTitle=_SubTitle;
+
+const int PaddingText = 5;
+const int Padding     = 2;
+const int PaddingSide = 20;
+
+- (id) initWithText:(NSString*)Text withTextBtm:(NSString*)TextBtm toPoint:(id)Point withAction:(SEL)Selector {
+  
+  _Title = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
+  _Title.font = [UIFont fontWithName:@"Helvetica-Bold" size:18];
+  _Title.textColor = [UIColor whiteColor];
+  _Title.backgroundColor = [UIColor clearColor];
+	_Title.text = Text;
+	[_Title setNeedsLayout];
+  
+  _SubTitle = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
+  _SubTitle.font = [UIFont fontWithName:@"Helvetica" size:12];
+  _SubTitle.textColor = [UIColor whiteColor];
+  _SubTitle.backgroundColor = [UIColor clearColor];
+  _SubTitle.text = TextBtm;
+	[_SubTitle setNeedsLayout];
+  
+  _Button = [[UIButton buttonWithType:UIButtonTypeDetailDisclosure] retain];
+  _Button.adjustsImageWhenHighlighted = NO;
+  _Button.userInteractionEnabled = YES;
+  _Button.exclusiveTouch = YES;
+  [_Button addTarget:Point action:Selector forControlEvents:UIControlEventTouchUpInside];
+  
+  CGSize fsize = [self UpdateSize:-1];
+  
+  UIView *fumetto = [[UIView alloc] initWithFrame:CGRectMake(0, 0, fsize.width, fsize.height)];
+  
+  fumetto.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.7];
+  fumetto.layer.cornerRadius = 5;
+  
+  [fumetto addSubview:_Title];
+  [fumetto addSubview:_SubTitle];
+  [fumetto addSubview:_Button];
+  
+  [fumetto bringSubviewToFront:_SubTitle];
+  [fumetto bringSubviewToFront:_Button];
+  [fumetto bringSubviewToFront:_Title];
+  
+  UIImage *imgptr = [[UIImage alloc] initWithContentsOfFile:[PGConfig GetBundleFile:@"Pointer" ofType:@"png"]];
+  UIImageView *puntatore = [[UIImageView alloc] initWithImage:imgptr];
+  puntatore.frame  = CGRectMake(0, 0, imgptr.size.width, imgptr.size.height);
+  puntatore.center = CGPointMake(fumetto.frame.size.width / 2, fumetto.frame.size.height + puntatore.frame.size.height / 2);
+  [puntatore sizeToFit];
+  puntatore.alpha = 0.7;
+  
+  self = [self initWithFumetto:fumetto andPuntatore:puntatore toPoint:Point];
+  
+  [fumetto   release];
+  [puntatore release];
+  [imgptr    release];
+  
+  if ( self ) _IsCustom = NO;
+
+	return self;
+}
+
+- (id) initWithView:(UIView*)CView andArrow:(UIImage*)arrow toPoint:(id)Point {
+  
+  UIImageView *puntatore = nil;
+  
+  if ( arrow ) {    
+    puntatore = [[UIImageView alloc] initWithImage:arrow];
+    [puntatore sizeToFit];
+  }
+  else puntatore = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 0, 2)];
+  
+	self = [self initWithFumetto:CView andPuntatore:puntatore toPoint:Point];
+  
+  [puntatore release];
+  
+  if ( self ) _IsCustom = YES;
+  
+  return self;
+}
+
+- (id) initWithFumetto:(UIView*)Fumetto andPuntatore:(UIImageView*)Puntatore toPoint:(id)Point {
+  
+  self = [super initWithFrame:CGRectMake(0, 0, Fumetto.frame.size.width, Fumetto.frame.size.height + Puntatore.frame.size.height)];
+  if ( !self ) return nil;
+  
+  _Point = (UIView*)Point;
+  
+  _Fumetto   = [Fumetto   retain];
+  _Puntatore = [Puntatore retain];
+
+  [self addSubview:_Fumetto];
+  [self bringSubviewToFront:_Fumetto];
+  
+  [self addSubview:_Puntatore];
+  [self bringSubviewToFront:_Puntatore];
+
+  self.center = CGPointMake(_Point.frame.size.width / 2, -(self.frame.size.height / 2));
+  
+  super.hidden = YES;
+
+	return self;
+}
+
+- (CGSize) UpdateSize:(int)MapWidth {
+  CGSize tsize  = [_Title.text    sizeWithFont:_Title.font];
+  CGSize stsize = [_SubTitle.text sizeWithFont:_SubTitle.font];
+
+  UILabel *label = _Title;
+  
+  if ( tsize.width < stsize.width ) {
+    tsize = CGSizeMake(stsize.width, tsize.height);
+    label = _SubTitle;
+  }
+  
+  MapWidth -= ((Padding * 2) + (PaddingText * 3) + _Button.frame.size.width);
+  
+  if ( MapWidth > 0 && tsize.width >= MapWidth ) {
+    while ( tsize.width > MapWidth ) {
+      label.text = [label.text substringToIndex:[label.text length] - 1];
+      tsize = [label.text sizeWithFont:label.font];
+    }
+    NSRange r = {[label.text length] - 3, 3};
+    label.text = [label.text stringByReplacingCharactersInRange:r withString:@"..."];
+  }
+
+  CGSize fsize = CGSizeMake((PaddingText * 3) + tsize.width + _Button.frame.size.width,
+                            (PaddingText * 3) + (tsize.height * 2));
+  
+  _Title.frame    = CGRectMake(PaddingText, PaddingText, tsize.width, tsize.height);
+  _SubTitle.frame = CGRectMake(PaddingText, (PaddingText * 2) + tsize.height, tsize.width, tsize.height);
+  _Button.frame   = CGRectMake((PaddingText * 2) + tsize.width,
+                                (fsize.height / 2) - (_Button.frame.size.height / 2),
+                                _Button.frame.size.width, _Button.frame.size.height);
+
+  return fsize;
+}
+
+- (CGPoint) UpdatePosition:(UIView*)Map {
+  CGSize s = _Fumetto.frame.size;
+  
+  if ( !_IsCustom ) s = [self UpdateSize:Map.frame.size.width];
+
+  _Fumetto.frame  = CGRectMake(_Fumetto.frame.origin.x, _Fumetto.frame.origin.y, s.width, s.height);
+  _Fumetto.center = CGPointMake(_Fumetto.frame.size.width / 2, _Fumetto.center.y);
+
+  _Puntatore.center = CGPointMake(_Fumetto.frame.size.width / 2, _Fumetto.frame.size.height + _Puntatore.frame.size.height / 2);
+  
+  self.frame  = CGRectMake(self.frame.origin.x, self.frame.origin.y, _Fumetto.frame.size.width, _Fumetto.frame.size.height + _Puntatore.frame.size.height);
+  self.center = CGPointMake(_Point.frame.size.width / 2, -(self.frame.size.height / 2));
+  
+
+  CGPoint pos = [_Point convertPoint:_Point.frame.origin toView:Map];
+  pos.x -= Map.frame.origin.x;
+  pos.y -= Map.frame.origin.y;
+
+  /** Move Map */
+  CGPoint pan = CGPointMake(0, 0);
+  if ( (pos.y - self.frame.size.height) < Padding )
+    pan = CGPointMake(pan.x, Padding - (pos.y - self.frame.size.height));
+  else if ( (Map.frame.size.height - pos.y - _Point.frame.size.height) < PaddingSide )
+    pan = CGPointMake(pan.x, Map.frame.size.height - pos.y - _Point.frame.size.height - PaddingSide);
+  
+  if ( pos.x < PaddingSide )
+    pan = CGPointMake(PaddingSide - pos.x, pan.y);
+  else if ( (Map.frame.size.width - pos.x - _Point.frame.size.width) < PaddingSide )
+    pan = CGPointMake(Map.frame.size.width - pos.x - _Point.frame.size.width - PaddingSide, pan.y);
+  
+  /** Redraw Fumetto */
+  CGPoint f = [_Point convertPoint:self.frame.origin toView:Map];
+  f.x += pan.x;
+  if ( f.x < Padding )
+    _Fumetto.frame = CGRectMake(Padding - f.x, _Fumetto.frame.origin.y,
+                                 _Fumetto.frame.size.width, _Fumetto.frame.size.height);
+  else if ( (Map.frame.size.width - f.x - _Fumetto.frame.size.width) < Padding )
+    _Fumetto.frame = CGRectMake(Map.frame.size.width - f.x - _Fumetto.frame.size.width - Padding,
+                                 _Fumetto.frame.origin.y, _Fumetto.frame.size.width, _Fumetto.frame.size.height);
+  
+  return pan;
+}
+
+- (BOOL) ButtonClicked:(CGPoint)Touch {
+  if ( _IsCustom ) {
+    UIView *v = [self hitTest:Touch withEvent:nil];
+    return (v && [v isKindOfClass:[UIButton class]]);
+  }
+  
+  CGPoint touch = [self convertPoint:Touch toView:_Fumetto];
+  return CGRectContainsPoint(_Button.frame, touch);
+}
+
+
+#pragma mark ANIMATION
+
+- (void) ForceHiding:(BOOL)Hide {
+  super.hidden = Hide;
+}
+
+- (void) setHidden:(BOOL)Hide {
+  if ( Hide == self.hidden ) return;
+  
+  [self.layer removeAnimationForKey:@"PGCallout::setHidden"];
+  
+  CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+  anim.delegate = self;
+  anim.removedOnCompletion = NO;
+  anim.fillMode = kCAFillModeForwards;
+  anim.speed = 1.2;
+  
+  anim.fromValue = [NSNumber numberWithInt:(Hide ? 1 : 0)];
+  anim.toValue   = [NSNumber numberWithInt:(Hide ? 0 : 1)];
+  
+  [self.layer addAnimation:anim forKey:@"PGCallout::setHidden"];
+}
+
+- (void)animationDidStart:(CAAnimation *)theAnimation {
+  super.hidden = NO;
+}
+
+- (void)animationDidStop:(CAAnimation *)theAnimation finished:(BOOL)flag {
+  if ( theAnimation == [self.layer animationForKey:@"PGCallout::setHidden"] ) {
+    CABasicAnimation *anim = (CABasicAnimation*)theAnimation;
+    super.hidden = ([anim.toValue compare:[NSNumber numberWithInt:0]] == NSOrderedSame);
+  }
+}
+
+- (void)dealloc {
+  if ( _Fumetto   ) [_Fumetto   release];
+  if ( _Puntatore ) [_Puntatore release];
+  if ( _Button    ) [_Button    release];
+
+  [super dealloc];
+}
+
+@end 

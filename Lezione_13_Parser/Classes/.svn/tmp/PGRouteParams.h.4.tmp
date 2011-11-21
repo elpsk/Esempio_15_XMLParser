@@ -1,0 +1,80 @@
+//
+//  PGRouteParams.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 16/11/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+#import <UIKit/UIKit.h>
+
+
+/** RouteType
+ *  Una enum contenente i tipi di percorso consentiti
+ */
+typedef enum {
+  PGRouteTypeCar = 0,   /**< PGRouteTypeCar */
+	PGRouteTypeBus,       /**< PGRouteTypeBus */
+  PGRouteTypeTaxi,      /**< PGRouteTypeTaxi */
+  PGRouteTypeCarPool,   /**< PGRouteTypeCarPool */  
+  PGRouteTypeTruck,     /**< PGRouteTypeTruck */
+  PGRouteTypeEmergency, /**< PGRouteTypeEmergency */
+  PGRouteTypeCarNoToll, /**< PGRouteTypeCarNoToll */
+	PGRouteTypeShort,     /**< PGRouteTypeShort */
+	PGRouteTypePed,       /**< PGRouteTypePed */
+	PGRouteTypeFast,      /**< PGRouteTypeFast */
+  PGRouteTypePub        /**< PGRouteTypePub */
+} RouteType;
+
+
+@interface PGRouteParams : NSObject {
+  NSMutableDictionary *m_Config;
+
+	CLLocationCoordinate2D startCoords;
+	CLLocationCoordinate2D endCoords;
+
+	NSString *routeSito;
+	
+	RouteType m_RouteType;
+
+  int m_HiliteUntilIndex;
+	int m_PointsForRegion;
+  
+  BOOL m_RouteCircles;
+}
+
+@property (assign) CLLocationCoordinate2D startCoords;
+@property (assign) CLLocationCoordinate2D endCoords;
+
+@property (assign) NSString *routeSito;
+@property (readonly) NSMutableDictionary *Config;
+@property (readonly) int HiliteUntilIndex;
+@property (nonatomic, assign) int PointsForRegions;
+
+@property (assign) BOOL RouteCircles;
+
+/**
+ * Metodi esposti dalla libreria non cancellare
+ */
+
+- (void) setStartPoint:(CLLocationCoordinate2D)start andEndPoint:(CLLocationCoordinate2D)end;
+- (void) setType:(RouteType)type;
+- (void) setSito:(NSString*)sito;
+- (void) setLineColor:(UIColor*)color;
+- (void) setLineOpacity:(float)opacity;
+- (void) setLineWidth:(int)width;
+- (void) setUseHilite:(BOOL)UseHilite;
+- (void) setLineHilitedColor:(UIColor *)LineHilitedColor;
+- (void) setLineHilitedOpacity:(float)LineHilitedOpacity;  
+- (void) setHiliteUntilIndex:(int)HiliteUntilIndex;
+
+/***/
+
+- (void) setRouteZoom:(float)Zoom;
+- (void) setHiliteUntilIndexEx:(int)HiliteUntilIndex;
+- (NSString*) getRouteTypeAsString;
+
+@end

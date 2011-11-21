@@ -1,0 +1,56 @@
+//
+//  PGSuperClass.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 08/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGSuperClass.h"
+
+
+@implementation PGMutableArray
+
+- (id) init {
+  self = [super init];
+  
+  if ( self ) m_Array = [[NSMutableArray alloc] init];
+  
+  return self;
+}
+
+- (NSUInteger)count {
+  return [m_Array count];
+}
+
+- (id)objectAtIndex:(NSUInteger)index {
+  return [m_Array objectAtIndex:index];
+}
+
+- (void)insertObject:(id)anObject atIndex:(NSUInteger)index {
+  [m_Array insertObject:anObject atIndex:index];
+}
+
+- (void)removeObjectAtIndex:(NSUInteger)index {
+  [m_Array removeObjectAtIndex:index];
+}
+
+- (void)addObject:(id)anObject {
+  [m_Array addObject:anObject];
+}
+
+- (void)removeLastObject {
+  [m_Array removeLastObject];
+}
+
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)anObject {
+  [m_Array replaceObjectAtIndex:index withObject:anObject];
+}
+
+- (void) dealloc {
+  if ( m_Array ) [m_Array release];
+  
+  [super dealloc];
+}
+
+@end

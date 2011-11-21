@@ -1,0 +1,36 @@
+//
+//  PGAriaMeteoPoint.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 07/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "PGPoint.h"
+#import "PGAriaMeteo.h"
+#import "PGMap.h"
+
+
+@class PGAriaMeteoPoint;
+
+@protocol PGAriaMeteoPointDelegate <NSObject>
+
+@optional
+  - (void) PGAriaMeteoPointClicked:(PGAriaMeteoPoint*)Point;
+
+@end
+
+
+@interface PGAriaMeteoPoint : PGPoint {
+  id _Controller;
+  PGAriaMeteo *_AriaMeteo;
+  CABasicAnimation *_Animation;
+}
+
+@property (nonatomic, readonly) PGAriaMeteo *AriaMeteo;
+@property (nonatomic, readonly) CABasicAnimation *Animation;
+
+- (id) initWithAriaMeteo:(PGAriaMeteo*)AriaMeteo withMap:(PGMap*)Map withReciver:(id)Controller;
+
+@end

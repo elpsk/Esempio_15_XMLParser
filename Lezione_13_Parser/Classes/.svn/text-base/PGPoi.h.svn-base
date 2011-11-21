@@ -1,0 +1,27 @@
+//
+//  PGPoi.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 11/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+
+@interface PGPoi : NSObject {
+
+  NSString *m_Nome;
+	NSString *m_Tipo;
+	float m_Lat;
+	float m_Lon;
+  
+}
+
+@property (assign) NSString *Nome;
+@property (assign) NSString *Tipo;
+
+@property float Lat;
+@property float Lon;
+
+@end

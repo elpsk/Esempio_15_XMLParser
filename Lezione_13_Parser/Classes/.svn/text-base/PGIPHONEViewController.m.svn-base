@@ -1,0 +1,236 @@
+//
+// PGIPHONEViewController.m
+// PGIPHONE
+//
+// Created by Seat Team PGNAV on 08/10/10.
+// Copyright __MyCompanyName__ 2010. All rights reserved.
+//
+
+#import "PGIPHONEAppDelegate.h"
+
+#import "PGIPHONEViewController.h"
+
+#import "PGFormule.h"
+#import "PGPoint.h"
+#import "PGMap.h"
+#import "PGParams.h"
+#import "PGRoute.h"
+#import "PGRouteParams.h"
+#import "CloserParams.h"
+#import "CloserMap.h"
+#import "PGDevice.h"
+#import "PGGeoResult.h"
+
+#import "PGStreetView.h"
+#import "PGParser.h"
+#import "PGRouteCircles.h"
+
+//#import "PGSvegliaGps.h"
+
+@implementation PGIPHONEViewController
+
+@synthesize MyView=m_View, Prev=m_Prev, Next=m_Next, StateLabel=m_StateLabel, StateImage=m_StateImage;
+
+- (void) viewDidLoad {
+  
+	PGParams *params = [[PGParams alloc] init];
+	[params setLat:45.46347];
+	[params setLon:9.19404];
+	[params setZoom:10];
+	[params setMapType:PGMapTypeStandard];
+  [params setClipsToBounds:YES];
+  [params setEnableTileFadeEffect:YES];
+	
+  map = [[PGMap alloc] initWithFrame:CGRectMake(0, 0, m_View.frame.size.width, m_View.frame.size.height) andConfig:params andDelegate:self];
+	
+  map.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | 
+  UIViewAutoresizingFlexibleWidth | 
+  UIViewAutoresizingFlexibleRightMargin |
+  UIViewAutoresizingFlexibleTopMargin |
+  UIViewAutoresizingFlexibleHeight |
+  UIViewAutoresizingFlexibleBottomMargin;
+       
+  m_View.autoresizesSubviews = YES;
+  [m_View addSubview:map];
+
+	[params release];
+  [map enableMapRotation:YES];
+  
+  [map PlaceholderDelegate:self andSelector:@selector(calloutButtonPressed:)];
+}
+
+- (NSString *) pathForDataFile {
+  NSArray *documentDir = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+  
+  NSString *path = nil;
+ 	if (documentDir) path = [documentDir objectAtIndex:0];    
+  
+  return [NSString stringWithFormat:@"%@/%@", path, @"data.bin"];
+}
+- (void) calloutButtonPressed:(PGGeoResult*)asd {
+  NSLog(@"%f - %f", asd.Posizione.latitude, asd.Posizione.longitude);
+
+  
+  PGGeoResult *res = [NSKeyedUnarchiver unarchiveObjectWithFile:[self pathForDataFile]];
+  NSLog(@"%@", res.description);
+  [NSKeyedArchiver archiveRootObject:asd toFile:[self pathForDataFile]];
+}
+
+- (BOOL) shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
+  return YES;
+}
+
+- (void) calloutClick:(id)Object {
+  if ( Object ) {
+    NSLog(@"Geocodifica: %@", [Object Descrizione]);
+  }
+  else NSLog(@"callout click NO");
+}
+
+- (void) didReceiveMemoryWarning { 
+	[super didReceiveMemoryWarning];
+}
+
+- (IBAction) enableGpsOnMap:(id)Sender {
+  BOOL val = [Sender selectedSegmentIndex] == 1;
+  [map enableGps:val];
+  
+  [map setZoom:4];
+}
+- (IBAction) enableRoute:(id)Sender {
+  BOOL val = [Sender selectedSegmentIndex] == 1;
+  
+  if (val == 1) {
+    
+    PGGeoResult *lbsone = [[PGParser LbsParser:@"milano via grosio" withConfig:map.Params] objectAtIndex:0];
+    CLLocationCoordinate2D locRA = PGLocationCoordinate2DMake(lbsone.Posizione.latitude, lbsone.Posizione.longitude);    
+    PGGeoResult *lbstwo = [[PGParser LbsParser:@"milano via famagosta 60" withConfig:map.Params] objectAtIndex:0];
+    CLLocationCoordinate2D locRB = PGLocationCoordinate2DMake(lbstwo.Posizione.latitude, lbstwo.Posizione.longitude);
+    
+    PGRouteParams *routePar = [[PGRouteParams alloc] init];
+    [routePar setStartPoint:locRA andEndPoint:locRB];
+    [routePar setType:PGRouteTypeCar];
+    [routePar setSito:@"iphone"];
+    [routePar setLineColor:[UIColor blueColor]];
+    [routePar setLineOpacity:0.5];
+    [routePar setLineWidth:5];
+    [routePar setUseHilite:YES];
+    [routePar setLineHilitedColor:[UIColor greenColor]];
+    [routePar setLineHilitedOpacity:0.5];
+    [routePar setHiliteUntilIndex:-1];
+    
+    PGPoint *pA = [[PGPoint alloc] initWith:locRA pointType:PGPointTypeIpadWhite isDraggable:NO pos:CGPointMake(0, 0) inView:map isTouchable:NO];
+    [pA setCalloutTitle:@"Geo"];
+    [pA setCalloutSubtitle:[lbsone Descrizione]];
+    [pA setCalloutButtonSelector:@selector(calloutClick:) withObject:lbsone toTarget:self];
+
+    PGPoint *pB = [[PGPoint alloc] initWith:locRB pointType:PGPointTypeIpadYellow isDraggable:NO pos:CGPointMake(0, 0) inView:map isTouchable:YES];
+    [pB setCalloutTitle:@"Geo"];
+    [pB setCalloutSubtitle:[lbstwo Descrizione]];
+    [pB setCalloutButtonSelector:@selector(calloutClick:) withObject:lbstwo toTarget:self];
+
+    NSArray *PointsArray = [NSArray arrayWithObjects:pA, pB, nil];    
+    PGRoute *route = [[PGRoute alloc] initWithPoints:PointsArray andParams:routePar];
+    [map addRoute:route];
+        
+    [pA release];
+    [pB release];
+    [routePar release];
+    [route release];
+    
+  } else {
+    [map clearRoute];
+    [map removePoints];
+  }
+  
+}
+- (IBAction) enableCompassOnMap:(id)Sender {
+//  BOOL val = [Sender selectedSegmentIndex] == 1;
+//  [map enableCompass:val];
+  
+//  NSMutableDictionary *m_CircleParams = [NSMutableDictionary dictionary];
+//  [m_CircleParams setObject:[NSNumber numberWithFloat:5000] forKey: @"defaultRadius"];
+//  [m_CircleParams setObject:[UIColor redColor] forKey: @"color"];
+//  [m_CircleParams setObject:[NSNumber numberWithFloat: 0.1] forKey: @"opacity"];
+//  [m_CircleParams setObject:[UIColor redColor] forKey: @"borderColor"];
+//  [m_CircleParams setObject:[NSNumber numberWithInt: 3] forKey: @"borderWidth"];
+//  [m_CircleParams setObject:[NSNumber numberWithFloat: 0.4] forKey: @"borderOpacity"];
+//  [m_CircleParams setObject:[NSNumber numberWithBool: YES] forKey:@"useMeters"];
+//  [m_CircleParams setObject:[NSNumber numberWithFloat: 4.0] forKey:@"defaultZoom"];
+//  [m_CircleParams setObject:[NSNumber numberWithFloat: 1000.0] forKey:@"maxRadius"];
+//  [m_CircleParams setObject:[NSNumber numberWithFloat: 5.0] forKey:@"minRadius"];
+//  
+//  m_Circle = [[PGCircle alloc] initWithParams:m_CircleParams];
+//  [m_Circle disableAnimation];
+//  [map addPlaceHolder:m_Circle :CLLocationCoordinate2DMake(45, 9) :CGPointMake(.5, .5)];
+  
+}
+
+- (IBAction) changeBound:(id)Sender {
+//  int height = ([Sender selectedSegmentIndex] == 0) ? 300 : 480; 
+//  [self.view setBounds:CGRectMake(0, 0, 320, height)];
+  
+}
+- (IBAction) enableStep:(id)Sender {
+  BOOL val = [Sender selectedSegmentIndex] == 0;
+  [map ShowRouteCircles:!val];
+}
+- (IBAction) changeStep:(id)Sender {
+  PGRStep *step = nil;
+    
+  if ( [Sender tag] == 0 ) step = [map showPrevStep];
+  else step = [map showNextStep];
+  
+  if ( step ) {
+    [map setZoom:0];
+    [map moveMapTo:step.Coord withAnimation:YES];
+    
+    NSData *imgData = [NSData dataWithContentsOfURL:[NSURL URLWithString:step.ImageUrl]];
+    [m_StateImage setImage:[UIImage imageWithData:imgData]];
+    [m_StateLabel setText:[step GetDescription]];
+    //NSLog(@"%@", [step GetDescription]);
+    
+    [map ShowRouteCirclesAt:step.IdRstep];
+  }
+}
+- (IBAction) changeMapType:(id)Sender {
+//  [map setMapType:([Sender isOn] ? PGMapTypeOrto : PGMapTypeStandard)];
+  
+//  if ( [Sender isOn] ) {
+//    [map moveMapTo:CLLocationCoordinate2DMake(45.595275, 8.01454) withAnimation:YES];
+//    ztl = [[PGZTL alloc] initWithMap:map];
+//    [map addPlaceHolder:ztl :CLLocationCoordinate2DMake(45.595275, 8.01454) :CGPointMake(0, 0)];    
+//  } else {
+//    [map removePlaceholder:ztl];
+//    [ztl release];
+//  }
+
+//  [map setMapType:3];
+  
+}
+
+- (void) MapBoundChanged:(PGMap *)Map withEvent:(NSNumber *)Type {
+
+//  if ( [Type intValue] == PGEventTypeZoom ) {
+//    [ztl drawRect:Map.frame];
+//  }
+  
+}
+
+- (void) NetworkNoPresent:(PGMap *)Map {  
+
+}
+- (void) GpsInfoUpdated:(PGMap *)Map withInfo:(PGGpsInfo *)Info {
+
+}
+
+- (void)dealloc {
+	[super dealloc];
+}
+
+@end
+
+
+
+
+

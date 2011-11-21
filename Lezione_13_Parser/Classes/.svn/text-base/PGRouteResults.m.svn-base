@@ -1,0 +1,109 @@
+//
+//  PGRouteResults.m
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 22/02/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGRouteResults.h"
+#import "PGFormule.h"
+#import "PGRouteImages.h"
+
+@implementation PGRouteResults
+
+@synthesize RegionBounds	= m_RegionBounds;
+@synthesize WayPoints			= m_WayPoints;
+@synthesize Rsteps				= m_Rstep;
+@synthesize RouteId				= m_RouteId;
+@synthesize TotalLength		= m_TotalLength;
+@synthesize TotalTime     = m_TotalTime;
+@synthesize RouteBound		= m_RouteBound;
+@synthesize RouteType     = m_RouteType;
+
+- (id) init
+{
+  self = [super init];
+  if ( !self ) return nil;
+      
+	m_RegionBounds	= [[NSMutableArray alloc] init];
+	m_WayPoints			= [[NSMutableArray alloc] init];
+	m_Rstep					= [[NSMutableArray alloc] init];
+	m_RouteId				= 0;
+	m_TotalLength		= 0;
+	m_TotalTime     = 0;
+	m_RouteBound		= PGBoundMake(0, 0, 0, 0);
+  m_RouteType     = @"";
+	
+	return self;
+}
+
+- (void) addRegion:(float)top addLeft:(float)left addBottom:(float)bottom addRight:(float)right
+{
+	PGRegion * region = [[PGRegion alloc] init];
+	region.Bound = PGBoundMake(top, left, bottom, right);
+
+	[m_RegionBounds addObject:region];
+	
+	[region release];
+	
+}
+
+- (void) addStep:(NSString *)current addCountry:(NSString *)country addCross:(int)cross addDestExit:(NSString *)destExit addDestSt:(NSString *)destSt addDir:(int)dir 
+		  addDsc:(NSString *)dsc addEcop:(BOOL)ecop addExit:(NSString *)exit addId:(int)idRstep addLoc:(NSString *)loc addPdes:(int)pdes
+		  addPt:(int)pt addRbExit:(int)rbExit addState:(NSString *)state addStlev:(BOOL)stlev addThrough:(BOOL)through addToll:(BOOL)toll
+			addTunnel:(BOOL)tunnel addTurn:(int)turn addX:(float)x addY:(float)y addLastCoord:(int)lastCoord withPFR:(int)PFR
+      addMezzoType:(NSString*)mezzo addFermate:(int)fermate addFrequenza:(int)frequenza addInfolink:(NSString*)infoLink addRouteType:(NSString*)rt
+{
+	PGRStep * singleStep = [[PGRStep alloc] init];
+
+	[singleStep initRstep:current addCountry:country addCross:cross addDestExit:destExit addDestSt:destSt addDir:dir addDsc:dsc addEcop:ecop addExit:exit addId:idRstep
+                addLoc:loc addPdes:pdes addPt:pt addRbExit:rbExit addState:state addStlev:stlev addThrough:through addToll:toll addTunnel:tunnel 
+								addTurn:turn addX:x addY:y addLastCoordIndex:lastCoord
+                addMezzoType:mezzo addFermate:fermate addFrequenza:frequenza addInfolink:infoLink addRouteType:rt];
+  
+  singleStep.Coord = PGLocationCoordinate2DMake(y, x);
+
+  if ( [singleStep.State isEqualToString:@"ROUNDABOUT_IN"] ) {
+    singleStep.ImageUrl = [PGRouteImages GetRouteImagesUrlDefault:PGRouteImagesTypeRotonda];
+  } else if ( [singleStep.State isEqualToString:@"CONTROLLED_ACCESS_IN"] || [singleStep.State isEqualToString:@"CONTROLLED_ACCESS_CONTINUE"] ) {
+    singleStep.ImageUrl = [PGRouteImages GetRouteImagesUrlDefault:PGRouteImagesTypeAutostradaIn];
+  } else if ( [singleStep.State isEqualToString:@"CONTROLLED_ACCESS_OUT"] ) {
+    singleStep.ImageUrl = [PGRouteImages GetRouteImagesUrlDefault:PGRouteImagesTypeAutostradaOut];
+  } else {
+    singleStep.ImageUrl = [PGRouteImages GetRouteImagesUrlFromCross:singleStep.Cross andTurn:singleStep.Turn];
+  }
+  
+  if ( [singleStep.TipoMezzo isEqualToString:@"METRO"] ) singleStep.ImageUrl = [PGRouteImages GetRouteImagesUrlDefault:PGRouteImagesTypeMetro];
+  if ( [singleStep.TipoMezzo isEqualToString:@"BUS"] )   singleStep.ImageUrl = [PGRouteImages GetRouteImagesUrlDefault:PGRouteImagesTypeBus];
+  if ( [singleStep.TipoMezzo isEqualToString:@"TRAM"] )  singleStep.ImageUrl = [PGRouteImages GetRouteImagesUrlDefault:PGRouteImagesTypeTram];
+
+	[m_Rstep addObject:singleStep];
+	[singleStep release];
+}
+
+- (void) addWayPoint:(float)x addY:(float)y addLoc:(NSString *)loc addDsc:(NSString *)dsc addDrwX:(float)drwX addDrwY:(float)drwY
+{
+	PGWayPoint * wayp = [[PGWayPoint alloc] init];
+
+	[wayp initWayPoint:x addY:y addLoc:loc addDsc:dsc addDrwX:drwX addDrwY:drwY];
+
+	[m_WayPoints addObject:wayp];
+	[wayp release];
+}
+
+- (PGRStep *) RstepAtIndex:(int)Index {
+	if ( Index <= 0 || Index > [m_Rstep count] ) return nil;
+  return [m_Rstep objectAtIndex:Index - 1];
+}
+
+- (void) dealloc {
+	if (m_Rstep)        { [m_Rstep release]; m_Rstep = nil; }			
+	if (m_WayPoints)    { [m_WayPoints release]; m_WayPoints = nil; }	
+	if (m_RegionBounds) { [m_RegionBounds release]; m_RegionBounds = nil; }	
+	
+	[super dealloc];
+	
+}
+
+@end

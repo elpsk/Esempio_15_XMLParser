@@ -1,0 +1,106 @@
+//
+//  PGEngine.m
+//  PGIPHONE
+//
+//  Created by Giovanni Catapano on 02/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGEngine.h"
+#import "PGEngineItem.h"
+#import "PGHttpWrapper.h"
+#import "PGDevice.h"
+#import "PGMap.h"
+
+
+@interface PGEngine (internals)
+  - (void) setItemsData:(NSData*)Data;
+  - (NSString*) GetUrl;
+@end
+
+
+@implementation PGEngine
+
+@synthesize Delegate=_Delegate, Params=_Params, Server=_Server, Funct=_Funct, MaxCount=_MaxCount, What=_What, Where=_Where, Center=_Center, Bound=_Bound;
+
+
+#pragma mark Initialization
+
+- (id) init {
+  
+  self = [super init];
+  
+  if ( self ) {
+    _Server = PGEngineServerPG;
+    _Funct  = PGEngineFunctWhere;
+  }
+  
+  return self;
+}
+
+- (void) dealloc {
+  [super dealloc];
+}
+
+- (void) setFunct:(PGEngineFunct)Function {
+  _Funct = Function;
+  
+  _Where  = @"";
+  _Center = PGLocationCoordinate2DInvalid();
+  _Bound  = PGLocationBoundInvalid();
+}
+
+
+#pragma mark Request
+
+- (NSString*) GetUrl {
+  switch ( _Server ) {
+    case PGEngineServerPG: return [_Params.Servers objectAtIndex:PGServerEnginePG];
+    case PGEngineServerPB: return [_Params.Servers objectAtIndex:PGServerEnginePB];
+    case PGEngineServerTC: return [_Params.Servers objectAtIndex:PGServerEngineTC];
+    default: return @"";
+  }
+}
+
+- (NSString*) GetQueryData {
+  if ( [_What length] == 0 ) return @"";
+  
+  switch ( _Funct ) {
+    case PGEngineFunctWhere:
+      if ( [_Where length] == 0 ) break;
+      return [NSString stringWithFormat:@"what=%@&where=%@", _What, _Where];
+
+    case PGEngineFunctCenter:
+      if ( !CLLocationCoordinate2DIsValid(_Center) ) break;
+      return [NSString stringWithFormat:@"what=%@&lat=%f&lon=%f", _What, _Center.latitude, _Center.longitude];
+
+    case PGEngineFunctBound:
+      if ( !PGLocationBoundIsValid(_Bound) ) break;
+      return [NSString stringWithFormat:@"what=%@&ymin=%f&xmin=%f&ymax=%f&xmax=%f", _What, _Bound.Min.latitude, _Bound.Min.longitude, _Bound.Max.latitude, _Bound.Max.longitude];
+  }
+  return @"";
+}
+
+- (void) Request:(NSString*)Options {
+  NSString *query = [NSString stringWithFormat:@"%@&%@&%@&device=%@", [self GetUrl], [self GetQueryData], Options, [PGDevice GetEngineDevice]];
+
+  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+  [dict setObject:NSStringFromSelector(@selector(setItemsData:)) forKey:@"selector"];
+  [dict setObject:query forKey:@"query"];
+  
+  PGHttpWrapper *http = [[[PGHttpWrapper alloc] initWithTarget:self] autorelease];
+  [http performSelectorOnMainThread:@selector(RequestData:) withObject:dict waitUntilDone:NO];
+}
+
+- (void) setItemsData:(NSData*)Data {
+  NSString *xml =[[NSString alloc] initWithData:Data encoding:NSUTF8StringEncoding];
+
+  NSMutableArray *results = [NSMutableArray array];
+  _MaxCount = [PGParser EngineParser:results inputXml:xml];
+  [xml release];
+  
+  if ( _Delegate && [_Delegate respondsToSelector:@selector(ItemsDidFinishLoading:withResults:)] )
+    [_Delegate ItemsDidFinishLoading:self withResults:results];
+}
+
+@end

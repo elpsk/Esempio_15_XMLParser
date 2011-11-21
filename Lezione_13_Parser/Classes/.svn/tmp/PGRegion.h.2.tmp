@@ -1,0 +1,22 @@
+//
+//  PGSpaceBound.h
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 28/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "PGParams.h"
+#import "PGBoundEx.h"
+
+
+@interface PGRegion : NSObject {
+	NSMutableArray	*m_Coords;
+	PGBound					m_Bound;
+}
+
+@property (nonatomic, retain) NSMutableArray *Coords;
+@property (assign) PGBound Bound;
+
+@end

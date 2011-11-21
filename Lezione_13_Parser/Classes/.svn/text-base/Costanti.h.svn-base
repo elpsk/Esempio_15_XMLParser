@@ -1,0 +1,35 @@
+//
+//  Costanti.h
+//  PG-iPhone
+//
+//  Created by Seat PagineGialle on 07/10/10.
+//
+
+#ifndef COSTANTI_H
+#define COSTANTI_H 
+
+extern const double deg2rad;
+extern const double a;
+extern const double e;
+extern const double eccSquared;
+extern const double k0;
+extern const double l;
+extern const double cxTL;
+extern const double cyTL;
+extern const double c_180pi;
+extern const double c_pi180;
+extern const double lon_0;
+
+extern const double METERS_PER_MILE;
+extern const double MAPWIDTHMETERS;
+extern const int	  MAPWIDTHLEVEL1PIXELS;
+
+extern int BOUNDS_METERS;
+
+extern const int MIN_ACCURACY;
+extern const int MAX_ACCURACY;
+
+extern const int CONVERSION_ROUTE_LENGTH;
+
+#endif
+

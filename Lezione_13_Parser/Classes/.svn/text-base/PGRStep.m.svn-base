@@ -1,0 +1,222 @@
+//
+//  PGRStep.m
+//  PGIphone
+//
+//  Created by Alberto Pasca on 21/10/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGRStep.h"
+#include <math.h>
+
+@interface PGRStep (Internals)
++ (int) GetIntFromState:(NSString*)state;
++ (NSString*) RoundMeters:(int) iMetri;
+@end
+
+@implementation PGRStep
+
+@synthesize Coord=m_Coord;
+@synthesize Current=m_Current, Country=m_Country, Cross=m_Cross, DestExit=m_DestExit, DestSt=m_DestSt, Dir=m_Dir, Dsc=m_Dsc, Ecop=m_Ecop;
+@synthesize Exit=m_Exit, IdRstep=m_IdRstep, Loc=m_Loc, Pdes=m_Pdes, Pt=m_Pt, RbExit=m_RbExit, State=m_State, Through=m_Through, Toll=m_Toll;
+@synthesize Tunnel=m_Tunnel, Turn=m_Turn, LastCoordIndex = m_LastCoordIndex, ImageUrl=m_ImageUrl;
+@synthesize InfoLink=m_InfoLink, Fermate=m_Fermate, Frequenza=m_Frequenza, TipoMezzo=m_TipoMezzo, RouteType=m_RouteType, ATMImage=m_ATMImage;
+
+- (void) initRstep:(NSString *)current addCountry:(NSString *)country addCross:(int)cross addDestExit:(NSString *)destExit addDestSt:(NSString *)destSt 
+						addDir:(int)dir addDsc:(NSString *)dsc addEcop:(BOOL)ecop addExit:(NSString *)exit addId:(int)idRstep addLoc:(NSString *)loc addPdes:(int)pdes
+             addPt:(int)pt addRbExit:(int)rbExit addState:(NSString *)state addStlev:(BOOL)stlev addThrough:(BOOL)through addToll:(BOOL)toll
+         addTunnel:(BOOL)tunnel addTurn:(int)turn addX:(float)x addY:(float)y addLastCoordIndex:(int)lastCoordIndex
+      addMezzoType:(NSString*)mezzo addFermate:(int)fermate addFrequenza:(int)frequenza addInfolink:(NSString*)infoLink addRouteType:(NSString *)rt
+{
+	m_Current	= [current retain];
+	m_Country	= [country retain];
+	m_Cross		= cross;
+	m_DestExit	= [destExit retain];
+	m_DestSt	= [destSt retain];
+	m_Dir	= dir;
+	m_Dsc	= [dsc retain];
+	m_Ecop	= ecop;
+	m_Exit	= [exit retain];
+	m_IdRstep	= idRstep;
+	m_Loc	= [loc retain];
+	m_Pdes	= pdes;
+	m_Pt	= pt;
+	m_RbExit	= rbExit;
+	m_State	= [state retain];
+	m_Stlev	= stlev;
+	m_Through	= through;
+	m_Toll	= toll;
+	m_Tunnel	= tunnel;
+	m_Turn	= turn;
+	m_X	= x;
+	m_Y	= y;
+	m_LastCoordIndex = lastCoordIndex;
+  m_InfoLink = [infoLink retain];
+  m_Fermate = fermate;
+  m_Frequenza = frequenza;
+  m_TipoMezzo = [mezzo retain];
+}
+
+- (NSString*) GetDescription {
+ 
+  //if ( !TEST_ROUTE_DATA )
+    if ( [m_RouteType isEqualToString:@"atq"] || [m_RouteType isEqualToString:@"nmq"] ) return [self GetATMDescription];
+  //else return [self GetATMDescription];
+  
+  NSString *Direzione   = [NSString string];
+  
+  int IntState = [PGRStep GetIntFromState:m_State];
+  switch (IntState) {
+    case START: Direzione = @"Partenza"; break;
+    case END:   Direzione = @"Arrivo"; break;
+    case STOP:  Direzione = @"Punto di arrivo"; break;
+      
+    case FERRYBOAT_IN:  Direzione = @"Prendi il traghetto"; break;
+    case FERRYBOAT_OUT: Direzione = @"Scendi dal traghetto"; break;
+      
+    case CONTROLLED_ACCESS_IN:       Direzione = @"Entra in autostrada"; break;
+    case CONTROLLED_ACCESS_CONTINUE: Direzione = @"Continua in autostrada"; break;
+    case CONTROLLED_ACCESS_OUT:      Direzione = @"Esci dall'autostrada"; break;
+      
+    case FRONTAGE_IN:  Direzione = @"Prendi il controviale"; break;
+    case FRONTAGE_OUT: Direzione = @"Esci dal controviale"; break;
+      
+    case ROUNDABOUT_IN:  Direzione = [NSString stringWithFormat:@"Alla rotonda prendi la %dª uscita verso", m_RbExit]; break;
+    case ROUNDABOUT_OUT: Direzione = @"Continua in"; break;
+      
+    case TURN: 
+      switch (m_Dir) {
+        case 0: Direzione = @"Continua in"; break;
+        case 1: Direzione = @"Gira a sinistra in"; break;
+        case 2: Direzione = @"Gira a destra in"; break;
+      } break;
+  }
+  
+  if (m_DestSt) Direzione = [NSString stringWithFormat:@"%@ %@", Direzione, IntState == ROUNDABOUT_IN ? m_DestSt : m_Current];
+  else if (IntState == ROUNDABOUT_IN && (!m_DestSt || !m_Current || [m_Current isEqualToString:@""] ) ) {
+    Direzione = [NSString stringWithFormat:@"Alla rotonda prendi la %dª uscita", m_RbExit];
+  } else if (IntState != FERRYBOAT_IN) {
+    switch (m_Dir) {
+      case 0: {
+        if ( !m_Current || [m_Current isEqualToString:@""]) {
+          if (IntState == CONTROLLED_ACCESS_IN) Direzione = @"Entra in autostrada"; else Direzione = @"Continua"; 
+        } else {
+          if (IntState == CONTROLLED_ACCESS_IN) {
+            Direzione = [NSString stringWithFormat:@"Entra in autostrada %@", m_Current]; 
+          } else {
+            Direzione = [NSString stringWithFormat:@"Continua in %@", m_Current]; 
+          }
+        }
+        break;
+      }
+      case 1: Direzione = [NSString stringWithFormat:@"Gira a sinistra in %@", m_Current]; break;
+      case 2: Direzione = [NSString stringWithFormat:@"Gira a destra in %@",   m_Current]; break;
+    }
+    if (IntState == ROUNDABOUT_OUT) Direzione = [NSString stringWithFormat:@"Continua in %@", m_Current];
+  }
+  
+  return Direzione;
+}
+
+- (NSString*) GetATMDescription {
+  
+  NSString *Descrizione = [NSString string];
+  
+  int IntState = [PGRStep GetIntFromState:m_State];
+  switch (IntState) {
+    case START: Descrizione = [NSString stringWithFormat:@"Parti da %@", m_Current]; break;
+    case END:   Descrizione = [NSString stringWithFormat:@"Sei arrivato a %@", m_Current]; break;
+  }
+
+  // atm
+  switch (m_Dir) {
+    case 9:  Descrizione = [NSString stringWithFormat:@"Percorri %d", [self GetFormattedDistance]]; break;
+    case 97: Descrizione = [NSString stringWithFormat:@"Recati alla %@", m_Current]; break;
+    case 98: {
+      NSArray *cks = [m_Current componentsSeparatedByString:@" | "];
+      Descrizione = [NSString stringWithFormat:@"Prendi il %@ %d in direzione %@ per %d fermate", 
+                     m_TipoMezzo, 
+                     [cks objectAtIndex:0], 
+                     [cks objectAtIndex:1],
+                     m_Fermate];
+      break;
+    }
+    case 99: Descrizione = [NSString stringWithFormat:@"Scendi alla %@", m_Current]; break;
+  }
+  
+  return Descrizione;
+}
+
+- (NSString*) GetFormattedDistance {
+  return [PGRStep RoundMeters:m_Pdes];
+}
+
++ (int) GetIntFromState:(NSString*)state {
+  if ( [state isEqualToString:@"START"]) return START;
+  if ( [state isEqualToString:@"END"])   return END;
+  if ( [state isEqualToString:@"STOP"])  return STOP;
+  
+  if ( [state isEqualToString:@"FERRY_BOAT_IN"])  return FERRYBOAT_IN;
+  if ( [state isEqualToString:@"FERRY_BOAT_OUT"]) return FERRYBOAT_OUT;
+  
+  if ( [state isEqualToString:@"CONTROLLED_ACCESS_IN"])       return CONTROLLED_ACCESS_IN;
+  if ( [state isEqualToString:@"CONTROLLED_ACCESS_CONTINUE"]) return CONTROLLED_ACCESS_CONTINUE;
+  if ( [state isEqualToString:@"CONTROLLED_ACCESS_OUT"])      return CONTROLLED_ACCESS_OUT;
+  
+  if ( [state isEqualToString:@"ROUNDABOUT_IN"])  return ROUNDABOUT_IN;
+  if ( [state isEqualToString:@"ROUNDABOUT_OUT"]) return ROUNDABOUT_OUT;
+  
+  if ( [state isEqualToString:@"FRONTAGE_IN"])  return FRONTAGE_IN;
+  if ( [state isEqualToString:@"FRONTAGE_OUT"]) return FRONTAGE_OUT;
+  
+  if ( [state isEqualToString:@"TURN"]) return TURN;
+  
+  return -1;
+}
+
++ (NSString*) RoundMeters:(int) iMetri {
+  
+  NSString *sbRet = [NSString string];
+  
+  if (iMetri < 1000) sbRet = [NSString stringWithFormat:@"%d mt", ((iMetri + 5) / 10) * 10 ];
+  else if (iMetri < 100000) {
+    
+    NSString *sMetri = [NSString stringWithFormat:@"%d", iMetri + 50];
+    int l = [sMetri length];
+    sbRet = [NSString stringWithFormat:@"%@", [sMetri substringWithRange:NSMakeRange(0, l-3)]];
+    
+    NSString *sDec = [NSString stringWithFormat:@"%@", [sMetri substringWithRange:NSMakeRange(l - 3, 1)]];
+    if ( ![sDec isEqualToString:@"0"] ) {
+      sbRet = [NSString stringWithFormat:@"%@,%@", sbRet, sDec];
+    }
+    sbRet = [NSString stringWithFormat:@"%@ km", sbRet];
+  } else { // over 100 km
+    NSString *sMetri = [NSString stringWithFormat:@"%d", iMetri + 500];
+    sbRet = [NSString stringWithFormat:@"%@%@ km", sbRet, [sMetri substringWithRange:NSMakeRange(0, [sMetri length]-3)]];
+  }
+  return sbRet;
+}
+
+- (void) dealloc {
+	if (m_Current)  { [m_Current release]; m_Current = nil; }
+	if (m_Country)  { [m_Country release]; m_Country = nil; }
+	if (m_DestExit) {	[m_DestExit release];	m_DestExit = nil;	}
+	if (m_DestSt)   {	[m_DestSt release];	m_DestSt = nil;	}
+	if (m_Dsc)      { [m_Dsc release]; m_Dsc = nil; }
+	if (m_Exit)     { [m_Exit release]; m_Exit = nil; }
+	if (m_Loc)      { [m_Loc release]; m_Loc = nil; }
+	if (m_State)    { [m_State release]; m_State = nil; }
+	if (m_ImageUrl) { [m_ImageUrl release]; m_ImageUrl = nil; }
+  if (m_InfoLink) { [m_InfoLink release]; m_InfoLink = nil; }
+  if (m_TipoMezzo){ [m_TipoMezzo release]; m_TipoMezzo = nil; }
+	
+	[super dealloc];
+}
+
+
+
+@end
+
+
+
+

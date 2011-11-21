@@ -1,0 +1,19 @@
+/*
+ *  PGAutocompleteAlgoritm.h
+ *  PGIPHONE
+ *
+ *  Created by Gianluca Folloni on 20/07/11.
+ *  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+ *
+ */
+
+
+typedef struct PGLocT {
+  char Plain[150];
+  char Format[150];
+  int  Weight;
+} PGLocT;
+
+int LoadArray(PGLocT **Array, const char *FileName);
+int SearchDichotomic(const char *Key, PGLocT *Array, int NItem, int *First);
+int Sort(const void *First, const void *Next);

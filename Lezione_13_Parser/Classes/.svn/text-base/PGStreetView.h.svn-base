@@ -1,0 +1,23 @@
+//
+//  PGStreetViewer.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 25/01/11.
+//  Copyright 2011 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <CoreLocation/CoreLocation.h>
+
+@interface PGStreetView : UIViewController <UIWebViewDelegate> {
+	UIWebView *swBrowser;
+	UIActivityIndicatorView *activityView;
+	CLLocationCoordinate2D startingCoords;
+}
+
+@property (nonatomic, retain) UIActivityIndicatorView *activityView;
+@property (nonatomic, retain) UIWebView *swBrowser;
+
+- (id) initWithFrame:(CGRect) frame andCoords:(CLLocationCoordinate2D)coords;
+
+@end

@@ -1,0 +1,177 @@
+//
+//  PGTableView.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 01/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGTableView.h"
+#import "PGTableViewCell.h"
+
+
+@implementation PGTableView
+
+@synthesize MaxHeight=_MaxHeight;
+
+#pragma mark Initialization
+
+- (id) initWithFrame:(CGRect)Frame andParams:(PGParams*)Params andReciver:(id<PGTableViewDelegate>)Receiver {
+
+  self = [super initWithFrame:Frame style:UITableViewStylePlain];
+	
+  if (self) {
+		self.backgroundColor = [UIColor whiteColor];
+		self.dataSource = self;
+    self.bounces = YES;
+    self.alwaysBounceVertical = YES;
+    self.showsVerticalScrollIndicator = YES;
+    self.rowHeight = CellHeight;
+    self.delegate = self;
+    
+    self.autoresizingMask = UIViewAutoresizingFlexibleTopMargin  | UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleBottomMargin |
+    UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleWidth  | UIViewAutoresizingFlexibleRightMargin;
+    
+    [self reloadData];
+		[self setClipsToBounds:YES];
+    
+    _Receiver = Receiver;
+
+    _Auto = [[PGAutocomplete alloc] initWithConfiguration:Params];
+    _Auto.Delegate = self;
+
+    _Queue = [[NSOperationQueue alloc] init];
+    [_Queue addOperation:_Auto];
+	}
+  
+  return self;
+}
+
+- (void)dealloc {
+  if ( _Queue   ) [_Queue   release];
+  if ( _Auto    ) [_Auto    release];
+  if ( _Results ) [_Results release];
+  
+  [super dealloc];
+}
+
+
+#pragma mark Autocomplete
+
+- (void) Autocomplete:(NSString *)String {
+
+  if ( [String length] > 0 ) {
+    String = [String stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    [_Auto Autocomplete:String];
+  }
+  else [self GetAutocompleteResults:nil];
+}
+
+- (void) GetAutocompleteResults:(NSArray*)Array {
+  
+  if ( _Results ) {
+    [_Results release];
+    _Results = nil;
+  }
+  
+  if ( Array ) _Results = [Array retain];
+  
+  [self reloadData];
+}
+
+
+#pragma mark TableView
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+	return 1;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+  
+	if ( !_Results || [_Results count] == 0 ) {
+		self.hidden = YES;
+		return 0;
+	}
+  
+  self.hidden = NO;
+  
+  if ( ([_Results count] * CellHeight) < _MaxHeight )
+    [self setFrame:CGRectMake(self.frame.origin.x, self.frame.origin.y, self.frame.size.width, [_Results count] * CellHeight)];
+  else {
+    [self setFrame:CGRectMake(self.frame.origin.x, self.frame.origin.y, self.frame.size.width, _MaxHeight)];
+    [self flashScrollIndicators];
+  }
+  
+  return [_Results count];
+}
+
+- (CGFloat) tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+	return CellHeight;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+  
+	if (!_Results || [_Results count] == 0) return nil;
+  
+  self.hidden = NO;
+	
+	static NSString *CellIdentifier = @"Cell";
+  
+	PGTableViewCell *cell = (PGTableViewCell*)[tableView dequeueReusableCellWithIdentifier:CellIdentifier];
+	if ( !cell )
+    cell = [[[PGTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier] autorelease];
+  
+	if ( indexPath.row < [_Results count] ) {
+    NSObject *item = [_Results objectAtIndex:indexPath.row];
+    
+    NSString *str = @"";
+    if ( [item isKindOfClass:[PGGeoResult class]] ) {
+      PGGeoResult *geo = (PGGeoResult*)item;
+      cell.Original = [geo DescrizioneAC];
+      str = [geo DescrizioneShort:cell.frame.size.width usingFont:cell.textLabel.font];
+    }
+    else cell.Original = str = (NSString*)item;
+    
+    [cell.textLabel setText:str];
+  }
+  
+	return cell;
+}
+
+- (void) tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+
+	if ( _Receiver && [_Receiver conformsToProtocol:@protocol(PGTableViewDelegate)] && [_Receiver respondsToSelector:@selector(AutocompleteChoice:withTag:)] ) {
+    PGTableViewCell *cell =  (PGTableViewCell*)[tableView cellForRowAtIndexPath:indexPath];
+    if ( !cell) return;
+		[_Receiver AutocompleteChoice:cell.Original withTag:self.tag];
+  }
+}
+
+@end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

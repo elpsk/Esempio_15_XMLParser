@@ -1,0 +1,103 @@
+//
+//  PGPoint.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 08/10/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <CoreLocation/CoreLocation.h>
+#import "PGCallout.h"
+
+
+typedef enum {
+	PGPointTypeYellow,
+	PGPointTypeBlue,
+	PGPointTypeManStatic,
+	PGPointTypeManMoving,
+	PGPointTypeCenter,
+	PGPointTypeLocation,
+  PGPointTypeCompass,
+  PGPointTypeCanvas,
+  PGPointTypeOpec,
+	PGPointTypeDefault,
+  PGPointTypeIpadYellow,
+  PGPointTypeIpadWhite,
+  PGPointTypeTransparent
+} PGPointType;
+
+typedef enum {
+  PGPointTouchCallout = 0,
+  PGPointTouchButton,
+  PGPointTouchOutside
+} PGPointTouch;
+
+
+@class PGPoint;
+@class PGMap;
+
+
+@protocol PGPointDelegate <NSObject>
+@optional
+- (void) PointClicked:(PGPoint*)Point onMap:(PGMap*)Map;
+@end
+
+
+@interface PGPoint : UIView {
+  
+  CLLocationCoordinate2D m_Position;
+	id <PGPointDelegate> m_Delegate;
+  
+	BOOL m_Draggable, m_Touchable; // da implementare
+  
+	PGCallout *m_Callout;
+  
+  CGPoint m_Anchor;
+  CGPoint m_DragPoint;
+  
+  PGMap *m_Map;
+  
+	id m_Receiver, m_Object;
+	SEL m_Selector;
+	
+	NSString *calloutTitle;
+	NSString *calloutSubTitle;
+	
+	UIImageView *m_ImageView;
+  UIView      *m_CustomCallout;
+  UIImage     *m_CustomArrow;
+	
+  // servono a startLongPressCounter
+  BOOL isOnLongPressMode;
+	double secondsInterval;
+	NSTimer *lpTim;
+  
+	NSSet   *m_Touches;
+  UIEvent *m_Event;
+}
+
+@property (nonatomic, assign) id delegate;
+@property (readonly) CLLocationCoordinate2D Position;
+@property (readonly) CGPoint Anchor;
+
+/*
+ * Metodi esposti dalla libreria non cancellare
+ */
+
+- (id) initWith:(CLLocationCoordinate2D)coords pointType:(PGPointType)t isDraggable:(BOOL)drag pos:(CGPoint)p inView:(UIView*)v isTouchable:(BOOL)touchEnabled;
+- (void) removeCallout:(BOOL)Force;
+- (void) setCalloutButtonSelector:(SEL)Selector withObject:(id)Object toTarget:(id)Target;
+- (void) setCalloutButtonSelector:(SEL)Selector toTarget:(id)Target;
+- (void) setCalloutButtonReceiver:(id)Receiver;
+- (void) setCalloutTitle:(NSString*)Title;
+- (void) setCalloutSubtitle:(NSString*)SubTitle;
+- (void) setCustomCallout:(UIView*)CustomView;
+- (void) setCustomCallout:(UIView*)CustomView withArrow:(UIImage*)Img;
+- (void) ShowCallout;
+
+/***/
+
+- (int) InsideTouch:(CGPoint)Touch;
+
+@end

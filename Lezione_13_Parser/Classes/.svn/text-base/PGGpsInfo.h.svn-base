@@ -1,0 +1,34 @@
+//
+//  PGGpsInfo.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 10/05/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "PGGeoResult.h"
+
+
+@interface PGSpeed : NSObject {
+  double m_MpS;
+  int m_KpH;
+  int m_MpH;
+}
+
+@property (nonatomic, assign) double MpS;
+@property (nonatomic, readonly) int KpH;
+@property (nonatomic, readonly) int MpH;
+
+@end
+
+
+@interface PGGpsInfo : NSObject {
+  PGGeoResult *m_Location;
+  PGSpeed     *m_Speed;
+}
+
+@property (nonatomic, retain) PGGeoResult *Location;
+@property (nonatomic, readonly) PGSpeed *Speed;
+
+@end

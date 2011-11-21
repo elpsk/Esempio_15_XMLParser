@@ -1,0 +1,51 @@
+//
+//  PGEngineItem.h
+//  PGIPHONE
+//
+//  Created by Giovanni Catapano on 02/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+
+
+@interface PGEngineItem : NSObject {
+  NSString *_Id;
+  NSString *_Name;
+  NSString *_UserDetail;
+  NSString *_UrlDetail;
+  NSString *_UrlDetailMobile;
+  NSString *_Category;
+  NSString *_Logo;
+  NSString *_Address;
+  NSString *_City;
+  NSString *_Province;
+  NSString *_Zip;
+  NSString *_Country;
+  CLLocationCoordinate2D _Coord;
+  double _Distance;
+  NSString *_EmailAddress;
+  
+  
+  NSInteger _Tag;
+}
+
+@property (nonatomic, retain) NSString *Id;
+@property (nonatomic, retain) NSString *Name;
+@property (nonatomic, retain) NSString *UserDetail;
+@property (nonatomic, retain) NSString *UrlDetail;
+@property (nonatomic, retain) NSString *UrlDetailMobile;
+@property (nonatomic, retain) NSString *Category;
+@property (nonatomic, retain) NSString *Logo;
+@property (nonatomic, retain) NSString *Address;
+@property (nonatomic, retain) NSString *City;
+@property (nonatomic, retain) NSString *Province;
+@property (nonatomic, retain) NSString *Zip;
+@property (nonatomic, retain) NSString *Country;
+@property (readwrite) CLLocationCoordinate2D	Coord;
+@property (nonatomic, assign) double Distance;
+@property (nonatomic, retain) NSString *EmailAddress;
+@property (nonatomic, assign) NSInteger Tag;
+
+@end

@@ -1,0 +1,116 @@
+//
+//  PGGpsCircle.h
+//  closerlib
+//
+//  Created by Gabriele Venier on 2/24/11.
+//  Copyright 2011 VISup srl. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+#include <QuartzCore/QuartzCore.h>
+#include "Costanti.h"
+
+@class PGCircle;
+
+@protocol PGCircleDelegate
+@optional
+- (void) CircleHasRedrawn:(PGCircle*)circle withRect:(CGRect)rect;
+@end
+
+
+/**
+ * Classe PGGpsCircle per disegnare un cerchio su mappa, eventualmente attanccato alla posizione GPS
+ */
+@interface PGCircle : UIView {
+  
+  id m_Delegate;
+  
+  NSTimer *m_Timer;
+  
+  /**
+   * Colore sfondo cerchio
+   */  
+	UIColor   *color_;
+  
+  /**
+   * Opacità sfondo cerchio
+   */  
+	float     opacity_;
+  
+  /**
+   * Colore bordo cerchio
+   */    
+	UIColor   *borderColor_;
+  
+  /**
+   * Spessore bordo cerchio
+   */    
+	int       borderWidth_;
+  
+  /**
+   * Opacità bordo cerchio
+   */    
+	float     borderOpacity_;
+  
+  /**
+   * Raggio cerchio
+   */    
+	float     radius_;
+  
+  /**
+   * Raggio cerchio in metri
+   */    
+	float     metersRadius_;
+  
+  /**
+   * Utilizzo raggio in metri
+   */    
+	float     useMeters_;
+  
+  /**
+   * Zoom di posizione
+   */      
+	float     zoom_;
+  
+  /**
+   * Raggio massimo in caso di animazione automatica con GPS
+   */      
+	float     maxRadiusPx_;
+  
+  /**
+   * Raggio minimo in caso di animazione automatica con GPS
+   */      
+	float     minRadiusPx_;
+	
+  /**
+   * Animazione consentita (solo se attaccato ad un gps)
+   */
+	BOOL      animate_;
+	
+	
+	CAShapeLayer*	shape;
+}
+
+@property (assign) id Delegate;
+
+/*
+ * Metodi esposti dalla libreria non cancellare
+ */
+
+/**
+ * Inizializza un cerchio con i parametri di init
+ * @param NSMutableDictionary *) pParams Parametri di init
+ * @return self
+ */
+- (id) initWithParams: (NSMutableDictionary *) pParams;
+
+- (void)  enableAnimation;
+- (void)  disableAnimation;
+- (float) getRadiusInMeters;
+- (void)  setRadiusInMeters:(float) pRadius;
+- (void)  simulateGpsAccuracy: (float) pRadius;
+- (void)  setZoom:(float)pZoom;
+	
+@end

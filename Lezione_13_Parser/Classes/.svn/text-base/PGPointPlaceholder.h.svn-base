@@ -1,0 +1,24 @@
+//
+//  PGPointPlaceholder.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 14/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "PGPoint.h"
+#import "PGGeoResult.h"
+
+
+@class PGMap;
+
+@interface PGPointPlaceholder : PGPoint {
+  PGGeoResult *m_Geocode;
+}
+
+@property (readonly) PGGeoResult *Geocode;
+
+- (id) initWithPosition:(CLLocationCoordinate2D)Position withMap:(PGMap*)Map;
+
+@end

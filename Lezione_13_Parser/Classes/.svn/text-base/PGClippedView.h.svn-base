@@ -1,0 +1,17 @@
+//
+//  PGClippedView.h
+//  PGIPHONE
+//
+//  Created by Giovanni Catapano on 08/11/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+@interface PGClippedView : UIView {
+  
+}
+
+- (BOOL) doHitTestForPoint:(CGPoint)point;
+
+@end

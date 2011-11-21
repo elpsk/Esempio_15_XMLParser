@@ -1,0 +1,310 @@
+//
+//  Formule.m
+//  PG-iPhone
+//
+//  Created by Seat PagineGialle on 07/10/10.
+//
+
+#import "PGFormule.h"
+#import "Costanti.h"
+
+@implementation PGFormule
+
+int horizontalResolution_;
+int verticalResolution_;
+double zoom_;
+double dz_;
+double actualZoom_;
+double upperLeftEasting_;
+double upperLeftNorthing_;
+double lowerRightEasting_;
+double lowerRightNorthing_;
+
++ (void) UTMToPixelsInit:(double)z 
+					dizeta:(double)dz
+	  horizontalResolution:(int)horizontalResolution
+		verticalResolution:(int)verticalResolution
+				 mapCenter:(CLLocationCoordinate2D)center
+					  zone:(int)zone
+{
+	CoordsUTM centerUtm = [PGFormule LL2UTM:center.latitude :center.longitude :zone];
+	
+	zoom_ = z;
+	dz_ = dz;
+	actualZoom_ = zoom_ * dz_;
+	horizontalResolution_ = horizontalResolution;
+	verticalResolution_ = verticalResolution;
+	
+	// Meters between the center and the border of the map. This assumes that actualZoom_ is 'normalized' for 430 pixels.
+	double deltaX = 0.5 * actualZoom_ * METERS_PER_MILE;
+	double deltaY = deltaX * verticalResolution_ / horizontalResolution_;
+	
+	// Calculate horizontal distance
+	upperLeftEasting_ = centerUtm.easting - deltaX;
+	lowerRightEasting_ = centerUtm.easting + deltaX;
+	
+	// Calculate vertical distance
+	lowerRightNorthing_ = centerUtm.northing - deltaY;
+	upperLeftNorthing_  = centerUtm.northing + deltaY;
+	
+	// Handle case where the northing values are swapped.
+	if (lowerRightNorthing_ > upperLeftNorthing_)
+	{
+		double x_swap = upperLeftNorthing_;
+		upperLeftNorthing_ = lowerRightNorthing_;
+		lowerRightNorthing_ = x_swap;
+	}
+}
+
++ (CGPoint) UTMToPixels:(CoordsUTM)utm 
+   horizontalResolution:(int)horizontalResolution
+	 verticalResolution:(int)verticalResolution
+			  mapCenter:(CLLocationCoordinate2D)center
+				   zone:(int)zone
+{	
+	double pixelsX = (utm.easting - upperLeftEasting_);
+	pixelsX /= lowerRightEasting_ - upperLeftEasting_;
+	pixelsX *= horizontalResolution_;
+	
+	// Calculate vertical pixels from border.
+	double pixelsY = (utm.northing - lowerRightNorthing_);
+	pixelsY /= upperLeftNorthing_ - lowerRightNorthing_;
+	pixelsY *= verticalResolution;
+	
+	/* Note that Northing values increment as you go further North. The pixels do
+	 * the inverse so I must invert the calculated value.
+	 */
+	pixelsY = verticalResolution - pixelsY;
+	
+	CGPoint p;
+	p.x = pixelsX;
+	p.y = pixelsY;
+	
+	return p;
+}
+
++ (CGPoint) LatLonToPixels:(CLLocationCoordinate2D)ll 
+	  horizontalResolution:(int)horizontalResolution
+		verticalResolution:(int)verticalResolution
+				 mapCenter:(CLLocationCoordinate2D)center
+					  zone:(int)zone
+{
+
+	CoordsUTM llUtm = [PGFormule LL2UTM:ll.latitude :ll.longitude :zone];
+	
+	double pixelsX = (llUtm.easting - upperLeftEasting_);
+	pixelsX /= lowerRightEasting_ - upperLeftEasting_;
+	pixelsX *= horizontalResolution_;
+	
+	// Calculate vertical pixels from border.
+	double pixelsY = (llUtm.northing - lowerRightNorthing_);
+	pixelsY /= upperLeftNorthing_ - lowerRightNorthing_;
+	pixelsY *= verticalResolution;
+	
+	/* Note that Northing values increment as you go further North. The pixels do
+	 * the inverse so I must invert the calculated value.
+	 */
+	pixelsY = verticalResolution - pixelsY;
+	
+	CGPoint p;
+	p.x = pixelsX;
+	p.y = pixelsY;
+	
+	return p;
+}
+
+/*
+ Return a CoordsLL struct with Lat/Lon values from an utm
+ - (double) northing
+ - (double) easting
+ */
++ (CLLocationCoordinate2D) pixelToLatLong:(int)pix_x pix_y:(int)pix_y 
+									lon:(double)lon lat:(double)lat 
+										z:(float)z 
+									dim_x:(int)dim_x dim_y:(int)dim_y 
+									 zone:(int)zone 
+{
+	
+	// ricavo la codifica utm del centro mappa
+	CoordsUTM utm = [self LL2UTM:lat :lon :zone];
+	
+	// calcolo dim mappa in metri	
+  float milesz = (0.0375 * pow(2, (z+3)));
+	double mtr_x = (milesz * 1609.3) * (dim_x / 430.0);
+	double mtr_y = (double) dim_y / dim_x * mtr_x;
+	
+	// TODO STE deve essere il delta di spostamento non il nuovo centro
+	pix_x = (int)(pix_x - dim_x / 2);
+	pix_y = (int)(dim_y / 2 - pix_y);
+	
+	// calcolo lat,lon del punto passato col numero di pixel
+	double ux = ( ((double)pix_x / dim_x) * mtr_x) + utm.easting;
+	double uy = ( ((double)pix_y / dim_y) * mtr_y) + utm.northing;
+	
+	CoordsLL ll = [self UTM2LL:uy :ux];
+
+	return PGLocationCoordinate2DMake(ll.lat, ll.lon);
+}
+
+
+
++ (CGPoint) UtmToPixels:(CoordsUTM)Utm withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone {
+  
+	CoordsUTM center = [PGFormule LL2UTM:Center.latitude :Center.longitude :Zone];
+  
+  // calcolo dim mappa in metri	
+  double milesz = (0.0375 * pow(2, (Zoom + 3)));
+	double dimxm = (milesz * 1609.3) * (VisibleSize.width / 430.0);
+	double dimym = dimxm * (VisibleSize.height / VisibleSize.width);
+  
+  // centro area visibile in pixel
+  CGPoint centerpix = CGPointMake(VisibleSize.width / 2, VisibleSize.height / 2);
+  
+  CGSize delta = CGSizeMake(Utm.easting - center.easting, Utm.northing - center.northing);
+  
+  delta.width  *= (VisibleSize.width  / dimxm);
+  delta.height *= (VisibleSize.height / dimym);
+  
+  return CGPointMake(centerpix.x + delta.width, centerpix.y - delta.height);
+}
+
++ (CGPoint) LatLongToPixels:(CoordsLL)LatLong withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone {
+  
+  CoordsUTM utm = [PGFormule LL2UTM:LatLong.lat :LatLong.lon :Zone];
+  return [PGFormule UtmToPixels:utm withCenter:Center withZoom:Zoom withSize:VisibleSize andZone:Zone];
+}
+
++ (CoordsUTM) PixelToUtm:(CGPoint)Point withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone {
+	
+	// ricavo la codifica utm del centro mappa
+	CoordsUTM utm = [self LL2UTM:Center.latitude :Center.longitude :Zone];
+	
+	// calcolo dim mappa in metri	
+  float milesz = (0.0375 * pow(2, (Zoom + 3)));
+	double mtr_x = (milesz * 1609.3) * (VisibleSize.width / 430.0);
+	double mtr_y = VisibleSize.height / VisibleSize.width * mtr_x;
+	
+	// TODO STE deve essere il delta di spostamento non il nuovo centro
+	Point.x = (int)(Point.x - VisibleSize.width / 2);
+	Point.y = (int)(VisibleSize.height / 2 - Point.y);
+	
+	// calcolo lat,lon del punto passato col numero di pixel
+  return CoordsUTMMake((Point.y / VisibleSize.height * mtr_y) + utm.northing,
+                       (Point.x / VisibleSize.width  * mtr_x) + utm.easting);
+}
+
++ (CoordsLL) PixelToLatLong:(CGPoint)Point withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone {
+  
+  CoordsUTM utm = [PGFormule PixelToUtm:Point withCenter:Center withZoom:Zoom withSize:VisibleSize andZone:Zone];
+  return [PGFormule UTM2LL:utm.northing :utm.easting];
+}
+
++ (PGBound) PixelToBoundUtm:(CGRect)PixBound withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone {
+  
+  CoordsUTM topleft = [PGFormule PixelToUtm:PixBound.origin withCenter:Center withZoom:Zoom withSize:VisibleSize andZone:Zone];
+  
+  CoordsUTM bottomright = [PGFormule PixelToUtm:CGPointMake(PixBound.origin.x + PixBound.size.width, PixBound.origin.y + PixBound.size.height)
+                                        withCenter:Center withZoom:Zoom withSize:VisibleSize andZone:Zone];
+  
+	return PGBoundMake(topleft.northing, topleft.easting, bottomright.northing, bottomright.easting);
+}
+
++ (PGBound) PixelToBoundLatLong:(CGRect)PixBound withCenter:(CLLocationCoordinate2D)Center withZoom:(float)Zoom withSize:(CGSize)VisibleSize andZone:(int)Zone {
+  
+  CoordsLL topleft = [PGFormule PixelToLatLong:PixBound.origin withCenter:Center withZoom:Zoom withSize:VisibleSize andZone:Zone];
+  
+  CoordsLL bottomright = [PGFormule PixelToLatLong:CGPointMake(PixBound.origin.x + PixBound.size.width, PixBound.origin.y + PixBound.size.height)
+                                        withCenter:Center withZoom:Zoom withSize:VisibleSize andZone:Zone];
+  
+	return PGBoundMake(topleft.lat, topleft.lon, bottomright.lat, bottomright.lon);
+}
+
+
+
+
+/*
+ Return a CoordsUTM struct with utm values from a lat / lon coords
+ - (double) latitude
+ - (double) longitude
+ - (int) zoneNumber
+ */
++ (CoordsUTM) LL2UTM:(double)Lt:(double)Lg:(int)ZoneNumber {
+	CoordsUTM utm;
+	double LongOrigin;
+	double eccPrimeSquared;
+	double N, T, C, A, M;
+	
+	double LongTemp = (Lg+180) - (int)((Lg+180)/360) * 360 - 180;	
+	double LatRad  = Lt * deg2rad;
+	double LongRad = LongTemp * deg2rad;
+	double LongOriginRad;
+	
+	LongOrigin = (ZoneNumber - 1) * 6 - 180 + 3;
+	LongOriginRad = LongOrigin * deg2rad;
+	
+	eccPrimeSquared = (eccSquared) / (1-eccSquared);
+	
+	N = a / sqrt(1-eccSquared * sin(LatRad) * sin(LatRad));
+	T = tan(LatRad) * tan(LatRad);
+	C = eccPrimeSquared * cos(LatRad) * cos(LatRad);
+	A = cos(LatRad) * (LongRad-LongOriginRad);
+	
+	M = a*((1 - eccSquared/4 - 3*eccSquared*eccSquared/64 -
+			5*eccSquared*eccSquared*eccSquared/256)*LatRad -
+		   (3*eccSquared/8 + 3*eccSquared*eccSquared/32 +
+			45*eccSquared*eccSquared*eccSquared/1024)*sin(2*LatRad) +
+		   (15*eccSquared*eccSquared/256 +
+			45*eccSquared*eccSquared*eccSquared/1024)*sin(4*LatRad) -
+		   (35*eccSquared*eccSquared*eccSquared/3072)*sin(6*LatRad));
+	
+	utm.easting = (double)(k0*N*(A+(1-T+C)*A*A*A/6 + (5-18*T+T*T+72*C-58*eccPrimeSquared)*A*A*A*A*A/120) + 500000.0);	
+	utm.northing = (double)(k0*(M+N*tan(LatRad)*(A*A/2+(5-T+9*C+4*C*C)*A*A*A*A/24 + (61-58*T+T*T+600*C-330*eccPrimeSquared)*A*A*A*A*A*A/720)));
+	
+	if (Lt < 0) utm.northing += 10000000.0;
+	
+	return utm;
+}
+
+/*
+ Return a CoordsLL struct with Lat/Lon values from an utm
+ - (double) northing
+ - (double) easting
+ */
++ (CoordsLL) UTM2LL:(double)UTMNorthing:(double)UTMEasting {
+	CoordsLL ll;
+	double x = UTMEasting - 500000;
+	double y = UTMNorthing;
+	
+	double M = y/k0;
+	
+	double mu = M/(a*(1-(e*e)/4 - 3 * pow(e,4)/64 - 5 * pow(e,6)/256)); 
+	double e1 = (1 - sqrt(1 - e*e))/(1 + sqrt(1 - e*e));
+	double J1 = (1.5*e1 - 27*pow(e1,3)/32);
+	double J2 = (21*e1*e1/16 - 55*pow(e1,4)/32);
+	double J3 = (151*pow(e1,3)/96);
+	double J4 = (1097*pow(e1,4)/512);
+	double fp = mu + J1*sin(2*mu) + J2*sin(4*mu) + J3*sin(6*mu) + J4*sin(8*mu);
+	
+	double ep =  sqrt(e*e/(1-e*e));
+	double C1 =  ep*ep*cos(fp)*cos(fp);
+	double T1 =  tan(fp) * tan(fp);
+	double R1 =  a*(1-e*e)/pow(1-e*e*sin(fp)*sin(fp),1.5);
+	double N1 =  a/pow(1-e*e*sin(fp)*sin(fp),0.5);
+	double D  =  x/(N1 * k0);
+	double Q1 = N1 * tan(fp)/R1;
+	double Q2 = (D*D/2);
+	double Q3 = (5 + 3*T1 + 10*C1 - 4*C1*C1 - 9*ep*ep)* pow(D,4)/24;
+	double Q4 = (61 + 90*T1 + 298*C1 +45*T1*T1  - 3*C1*C1 -252*ep*ep)*pow(D,6)/720;
+	double Q5 = D;
+	double Q6 = (1 + 2*T1 + C1)* pow(D,3)/6;
+	double Q7 = (5 - 2*C1 + 28*T1 - 3*C1*C1 + 8*ep*ep + 24*T1*T1)* pow(D,5)/120;
+	
+	ll.lat = fp - Q1*(Q2 - Q3 + Q4) ;
+	ll.lon = lon_0 + (Q5 - Q6 + Q7) /  cos(fp) ;	
+	ll.lat = ll.lat * c_180pi;
+	ll.lon = ll.lon * c_180pi;
+	
+	return ll;
+}
+
+@end

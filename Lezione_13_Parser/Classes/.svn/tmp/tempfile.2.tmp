@@ -1,0 +1,87 @@
+//
+//  PGGps.m
+//  PGIPHONE
+//
+//  Created by Seat Team PGNAV on 09/11/10.
+//  Copyright 2010 __MyCompanyName__. All rights reserved.
+//
+
+#import "PGGps.h"
+#import "PGMap.h"
+
+
+@interface PGGps (internals)
+  - (void) locationManager:(CLLocationManager*)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *) oldLocation;
+  - (void) locationManager:(CLLocationManager*)manager didFailWithError:(NSError *) error;
+  - (void) locationManager:(CLLocationManager*)manager didUpdateHeading:(CLHeading*)newHeading;
+@end
+
+@implementation PGGps
+
+@synthesize Location=m_Location;
+
+
+- (id) initWithReceiver:(id)Receiver {
+  self = [super init];
+  if ( !self ) return nil;
+
+  m_Receiver = Receiver;
+  
+  m_Manager = [[CLLocationManager alloc] init];
+  m_Manager.delegate = self;
+  m_Manager.desiredAccuracy = kCLLocationAccuracyBest;
+  m_Manager.distanceFilter  = kCLDistanceFilterNone;
+  m_Manager.headingFilter   = kCLDistanceFilterNone;;
+
+  m_Location = [m_Manager.location retain];
+
+  return self;
+}
+
+- (void) EnableLocationService:(BOOL)Enable {
+  if ( Enable ) {
+    [m_Manager startUpdatingLocation];
+    if ( m_Location )
+      [m_Receiver performSelectorOnMainThread:@selector(AddGpsPoint:) withObject:m_Location waitUntilDone:NO];
+  }
+  else {
+    [m_Manager stopUpdatingLocation];
+    [m_Receiver performSelectorOnMainThread:@selector(RemoveGpsPoint) withObject:nil waitUntilDone:NO];
+  }
+}
+
+- (void) EnableHeadingService:(BOOL)Enable {
+  if ( Enable ) [m_Manager startUpdatingHeading];
+  else {
+    [m_Manager stopUpdatingHeading];
+    [m_Receiver performSelectorOnMainThread:@selector(SetCompass:) withObject:nil waitUntilDone:NO];
+  }
+}
+
+- (void) locationManager:(CLLocationManager*)manager didUpdateToLocation:(CLLocation*)newLocation fromLocation:(CLLocation*)oldLocation {
+  if ( !oldLocation ||
+       newLocation.coordinate.latitude  != oldLocation.coordinate.latitude  ||
+       newLocation.coordinate.longitude != oldLocation.coordinate.longitude ||
+       newLocation.horizontalAccuracy   != oldLocation.horizontalAccuracy ) {
+    if ( m_Location ) [m_Location release];
+    m_Location = [newLocation retain];
+    
+    if ( !oldLocation ) [m_Receiver performSelectorOnMainThread:@selector(AddGpsPoint:) withObject:m_Location waitUntilDone:NO];
+    else [m_Receiver performSelectorOnMainThread:@selector(UpdateGpsPoint:) withObject:m_Location waitUntilDone:NO];
+  }
+}
+
+- (void)locationManager:(CLLocationManager*)manager didUpdateHeading:(CLHeading*)newHeading {
+  [m_Receiver performSelectorOnMainThread:@selector(SetCompass:) withObject:newHeading waitUntilDone:NO];
+}
+
+- (void) locationManager:(CLLocationManager*)manager didFailWithError:(NSError*)error  { }
+
+- (void)dealloc {
+  if ( m_Manager  )	[m_Manager  release];
+  if ( m_Location ) [m_Location release];
+  [super dealloc];
+}
+
+
+@end

@@ -1,0 +1,53 @@
+//
+//  PGPOIParser.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 11/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGPOIParser.h"
+#import "PGConfig.h"
+#import "PGPoi.h"
+
+@interface PGPOIParser (Internals)
+  + (NSArray*) GetLines;
+@end
+
+@implementation PGPOIParser
+
++ (NSMutableArray*) GetAllPOI {
+  
+  NSMutableArray *pois = [NSMutableArray array];
+  
+  NSArray *AllLines = [self GetLines];
+  for ( NSString *SingleLine in AllLines ) {
+    NSArray *chunks = [SingleLine componentsSeparatedByString:@";"];
+
+    if ( [chunks count] > 1 ) {
+      PGPoi *poi = [[PGPoi alloc] init];
+      poi.Nome = [chunks objectAtIndex:2];
+      poi.Tipo = [chunks objectAtIndex:3];
+      poi.Lat  = [[chunks objectAtIndex:4] floatValue];
+      poi.Lon  = [[chunks objectAtIndex:5] floatValue];
+      [pois addObject:poi];
+      [poi release];
+    }
+
+  }
+  
+  return pois;
+}
+
++ (NSArray*) GetLines {
+  NSString *fileName = [PGConfig GetBundleFile:@"MetroMI" ofType:@"txt"];
+  //NSString *fileName = [[NSBundle mainBundle] pathForResource:@"MetroMI" ofType:@"txt"];
+  
+	NSError *error;
+  NSStringEncoding enc;
+	NSArray * lines = [[NSString stringWithContentsOfFile:fileName usedEncoding:&enc error:&error] componentsSeparatedByString:@"\n"];
+
+  return lines;
+}
+
+@end

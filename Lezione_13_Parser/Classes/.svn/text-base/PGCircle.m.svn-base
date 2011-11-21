@@ -1,0 +1,197 @@
+//
+//  PGGpsCircle.m
+//  closerlib
+//
+//  Created by Gabriele Venier on 2/24/11.
+//  Copyright 2011 VISup srl. All rights reserved.
+//
+
+#import "PGCircle.h"
+#include <QuartzCore/QuartzCore.h>
+
+@interface PGCircle (Internals)
+  - (void) stopAnimation;
+  - (void) animateRadius:(float)pRadius;
+  - (float)radiusFromMeters:(float)pRadiusMeters;
+  - (void) drawRadius:(float) pRadius;
+- (void) redrawCircle;
+@end
+
+@implementation PGCircle
+
+@synthesize Delegate=m_Delegate;
+
+/**
+ * Disegna un cerchio sulla mappa
+ * @param (NSMutableDictionary *)pParams parametri di configurazione
+ * @return PGCGpsircle
+ */
+- (id) initWithParams: (NSMutableDictionary *) pParams {
+
+	if(self = [super init])
+	{
+		self.userInteractionEnabled = NO;
+		self.multipleTouchEnabled = NO;
+		self.backgroundColor = [UIColor clearColor];
+		self.layer.masksToBounds = NO;
+		self.frame = CGRectMake(0,0, 100, 100);
+		self.clipsToBounds = NO;
+		
+		shape = [CAShapeLayer layer];
+		[self.layer addSublayer:shape];
+		
+		// config
+		radius_	=         [[pParams objectForKey: @"defaultRadius"] floatValue];
+		color_	=         (UIColor *)[pParams objectForKey: @"color"];
+		opacity_ =        [[pParams objectForKey: @"opacity"] floatValue];
+		borderColor_ =		(UIColor *)[pParams objectForKey: @"borderColor"];
+		borderWidth_ =		[[pParams objectForKey: @"borderWidth"] intValue];
+		borderOpacity_ =	[[pParams objectForKey: @"borderOpacity"] floatValue];
+		useMeters_ =      [(NSNumber *)[pParams objectForKey: @"useMeters"] boolValue];
+		zoom_ =           [(NSNumber *)[pParams objectForKey: @"defaultZoom"] floatValue];
+		maxRadiusPx_ =    [[pParams objectForKey: @"maxRadius"] floatValue];
+		minRadiusPx_ =    [[pParams objectForKey: @"minRadius"] floatValue];
+		
+		animate_ = NO;
+		m_Timer  = nil;
+		
+		if( useMeters_ ) {
+			metersRadius_ = radius_;
+			radius_ = [self radiusFromMeters:radius_];
+		}
+	}
+	
+	return self;
+}
+
+-(void)drawRect:(CGRect)rect
+{
+	[self redrawCircle];
+}
+
+-(void)redrawCircle
+{
+	CGMutablePathRef path = CGPathCreateMutable();
+	
+	float ix = -radius_ + self.frame.size.width  / 2;
+	float iy = -radius_ + self.frame.size.height / 2;
+  CGRect ellipseRect = CGRectMake(ix, iy, radius_ * 2 , radius_ * 2 );
+	CGPathAddEllipseInRect(path, NULL, ellipseRect);
+	
+	// draw circle
+	shape.strokeColor = [[borderColor_ colorWithAlphaComponent:borderOpacity_] CGColor];
+	shape.fillColor = [[color_ colorWithAlphaComponent:opacity_] CGColor];
+	shape.lineWidth = borderWidth_;
+	shape.path = path;
+	CGPathRelease(path);
+  
+  if ( m_Delegate &&
+      [m_Delegate conformsToProtocol:@protocol(PGCircleDelegate)] &&
+      [m_Delegate respondsToSelector:@selector(CircleHasRedrawn:withRect:)] )
+    [m_Delegate CircleHasRedrawn:self withRect:[self convertRect:ellipseRect toView:m_Delegate]];
+  
+}
+
+- (void) enableAnimation {
+	animate_ = YES;
+}
+
+- (void) disableAnimation {
+	animate_ = NO;
+  [self stopAnimation];
+}
+
+- (void) setRadiusInMeters:(float) pRadius {
+	useMeters_ = YES;
+	metersRadius_ = pRadius;
+	
+	float r = [self radiusFromMeters:pRadius];
+	if ( animate_ ) [self animateRadius:r];
+	else            [self drawRadius:r];
+}
+
+- (float) getRadiusInMeters {
+	return metersRadius_;
+}
+
+// internal usage
+- (void) drawRadius:(float) pRadius {
+
+//	float d = radius_ - pRadius;
+//	if(d*d < 2)
+//		return;
+	
+	radius_ = pRadius;
+	if(radius_ > maxRadiusPx_) radius_ = maxRadiusPx_;
+	else if(radius_ < minRadiusPx_) radius_ = minRadiusPx_;
+
+	[self redrawCircle];
+}
+
+- (void) setZoom:(float)pZoom {
+	zoom_ = pZoom;
+	[self setRadiusInMeters:metersRadius_];
+}
+
+- (float) radiusFromMeters:(float)pRadiusMeters {
+	float metersPerPixel = MAPWIDTHMETERS / (MAPWIDTHLEVEL1PIXELS / pow(2,zoom_ + 4));
+	return (float) 2*pRadiusMeters/metersPerPixel;
+}
+
+// used for tween animation
+- (void) simulateGpsAccuracy: (float) pRadius {
+	if ( useMeters_ ) [self setRadiusInMeters:pRadius];
+	else              [self drawRadius:pRadius];
+}
+
+// used for tween animation
+int counter = 0;
+float iRadius;
+float fRadius;
+float timeDur;
+
+- (void) animateRadius:(float)pRadius {
+	counter = 0;
+	iRadius = radius_;
+	fRadius = pRadius;
+	timeDur = 0.5f; // durata in secondi
+	
+	[self stopAnimation];
+
+  m_Timer = [NSTimer scheduledTimerWithTimeInterval:0.01f
+                                             target:self 
+                                           selector:@selector(animateTick:)
+                                           userInfo:nil
+                                            repeats:YES];
+}
+
+- (void) animateTick:(NSTimer *)timer {
+	float p = (float) counter++/(timeDur/[timer timeInterval]);
+	float r;
+  
+	if(p > 1.0)	{
+		r = fRadius;
+		[self stopAnimation];
+	}
+	else {
+		p = 3*p*p - 2*p*p*p; // ease in-out
+		r = iRadius + (p)*(fRadius-iRadius);
+	}
+	
+	[self drawRadius:r];
+}
+
+- (void) stopAnimation {
+	if ( m_Timer ) {
+		[m_Timer invalidate];
+		m_Timer = nil;
+    [self drawRadius:fRadius];
+	}
+}
+
+- (void) dealloc {
+  [self stopAnimation];
+	[super dealloc];
+}
+
+@end

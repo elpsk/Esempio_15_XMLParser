@@ -1,0 +1,101 @@
+//
+//  RouteImages.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 16/11/10.
+//  Copyright 2010 Cutaway SRL. All rights reserved.
+//
+
+#import "PGRouteImages.h"
+
+@interface PGRouteImages (Internals)
+  + (NSString*) GetBinaryString:(int)num;
+  + (int) GetDecimalFromBinaryString:(NSString*) binary;
+  + (NSString*) AddZeroPadWithValue:(NSString*)val andNum:(int)num;
+@end
+
+
+@implementation PGRouteImages
+
++ (NSString*) GetBinaryString:(int)num {    
+  NSMutableString *string = [NSMutableString string];
+  int spacing = pow( 2, 3 );
+  int width = /* (sizeof(number)) * */ 8;
+  int binaryDigit = 0;
+  int integer = num;
+  while( binaryDigit < width ) {
+    binaryDigit++;
+    [string insertString:( (integer & 1) ? @"1" : @"0" )atIndex:0];
+    if( binaryDigit % spacing == 0 && binaryDigit != width ) {
+      [string insertString:@" " atIndex:0];
+    }
+    integer = integer >> 1;
+  }
+
+  return string;
+}
+
++ (int) GetDecimalFromBinaryString:(NSString*) binary {  
+  return strtol([binary UTF8String], NULL, 2);
+}
+
++ (NSString*) AddZeroPadWithValue:(NSString*)val andNum:(int)num { 
+	NSMutableString *ZeroPaddedString = [NSMutableString stringWithString:val];
+  int tot = [ZeroPaddedString length];
+	for (int i = 0; i < num-tot; i++) [ZeroPaddedString insertString:@"0" atIndex:0];
+	return ZeroPaddedString;
+}
+
++ (NSString*) GetRouteImagesUrlDefault:(PGRouteImagesType)type {
+  switch (type) {
+    case PGRouteImagesTypeRotonda:       return @"http://img.tuttocitta.it/tcolnew/img/rotonda.png";
+    case PGRouteImagesTypeAutostradaIn:  return @"http://img.tuttocitta.it/tcolnew/img/strada.png";
+    case PGRouteImagesTypeAutostradaOut: return @"http://img.tuttocitta.it/tcolnew/img/fine_autostrada.png";
+    default: return nil;
+  }
+}
+
++ (NSString*) GetRouteImagesUrlFromCross:(int)cross andTurn:(int)turn {
+  
+  NSString *ImageUrl = @"http://img.tuttocitta.it/tcolnew/img/incroci/";
+  NSString *_cross = [NSString stringWithFormat:@"%@", [PGRouteImages GetBinaryString:cross]];
+  NSString *_turn  = [NSString stringWithFormat:@"%d", turn];
+  
+  int A = [[_turn substringWithRange: NSMakeRange(0, 1)] intValue];
+  int B = [[_turn substringFromIndex:1] intValue];  
+  if (A == B) return nil;
+  if (A != 1) {
+    B += (9 - A);
+    if (B > 8) B -= 8;
+    _cross = [NSString stringWithFormat:@"%@%@", 
+              [_cross substringFromIndex:9 - A], [_cross substringWithRange: NSMakeRange(0, 9 - A)]];
+  }
+  
+  _turn  = [NSString stringWithFormat:@"1%d", B]; 
+  _cross = [PGRouteImages AddZeroPadWithValue:[NSString stringWithFormat:@"%d", [PGRouteImages GetDecimalFromBinaryString:_cross]] andNum:3];
+
+  ImageUrl = [NSString stringWithFormat:@"%@i%@f%@.png", ImageUrl, _cross, _turn];
+  
+  return ImageUrl;
+}
+
++ (NSString*) GetRouteATMImages:(int)type {
+  switch (type) {
+    case PGRouteImagesTypeBus:    return @"http://img.tuttocitta.it/tcolnew/img/21bus.png";
+    case PGRouteImagesTypeMetro:  return @"http://img.tuttocitta.it/tcolnew/img/21metro.png";
+    case PGRouteImagesTypePiedi:  return @"http://img.tuttocitta.it/tcolnew/img/21piedi.png";
+    case PGRouteImagesTypeTram:   return @"http://img.tuttocitta.it/tcolnew/img/21tram.png";
+    default: return nil;
+  }
+}
+
+
+
+
+
+@end
+
+
+
+
+

@@ -1,0 +1,106 @@
+//
+//  PGStreetViewer.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 25/01/11.
+//  Copyright 2011 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import "PGStreetView.h"
+#import "PGFormule.h"
+
+#define URL_STREETVIEWER @"http://zip.paginegialle.it/iphone/index.min.js.html"
+
+@interface PGStreetView (private)
+	- (NSString*)evalJS:(NSString*)script;
+@end
+
+@implementation PGStreetView
+@synthesize swBrowser, activityView;
+
+- (id) initWithFrame:(CGRect) frame andCoords:(CLLocationCoordinate2D)coords {
+	swBrowser = [[UIWebView alloc] initWithFrame:frame];
+	startingCoords = PGLocationCoordinate2DMake(coords.latitude, coords.longitude);
+	
+	[self.view setFrame:frame];
+	[self.view addSubview:swBrowser];
+	[self.swBrowser setFrame:CGRectMake(0, 0, frame.size.height, frame.size.width)];
+	
+	return self;
+}
+
+- (void) viewDidLoad {
+	[super viewDidLoad];
+	
+	activityView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+	activityView.frame = CGRectMake(230, 150, 37.0f, 37.0f);
+	
+	CGAffineTransform transform = CGAffineTransformMakeRotation(M_PI/2);
+	self.view.transform = transform;
+	[UIApplication sharedApplication].statusBarOrientation = UIInterfaceOrientationLandscapeRight;
+	
+	swBrowser.delegate = self;
+	
+	NSURL *url = [[NSURL alloc] initWithString:[NSString stringWithFormat:@"%@?lat=%f&lon=%f", 
+												URL_STREETVIEWER, 
+												startingCoords.latitude,
+												startingCoords.longitude ]];
+	
+	NSURLRequest *rq = [[NSURLRequest alloc] initWithURL:url];
+	[swBrowser loadRequest:rq];
+	
+	UIButton *button = [UIButton buttonWithType:UIButtonTypeDetailDisclosure];
+	button.frame = CGRectMake(10, 10, 30.0f, 30.0f );
+	[button addTarget:self action:@selector(close) forControlEvents: UIControlEventTouchUpInside];
+	[swBrowser addSubview:button];
+	
+	[rq release];
+	[url release];
+}
+
+- (void) close {
+	[self.view removeFromSuperview];
+	[UIApplication sharedApplication].statusBarOrientation = UIInterfaceOrientationPortrait;
+}
+
+- (void) setLatLonCoords:(CLLocationCoordinate2D*) coords {
+	
+}
+
+- (void) setBearing:(float)bear {
+	
+}
+
+- (void) setTilt:(float) tilt{
+	
+}
+
+- (void) webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
+	
+}
+
+- (void) webViewDidFinishLoad:(UIWebView *)webView {
+	[UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
+	
+	[activityView stopAnimating];
+	[activityView removeFromSuperview];
+}
+
+- (void) webViewDidStartLoad:(UIWebView *)webView {
+	[UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
+
+	[activityView startAnimating];
+	[self.view addSubview:activityView];	
+}
+
+- (NSString*)evalJS:(NSString*)script {
+    return [swBrowser stringByEvaluatingJavaScriptFromString:script];
+}
+
+- (void)dealloc {
+    [super dealloc];
+	
+	if (activityView != nil) [activityView release];
+}
+
+@end

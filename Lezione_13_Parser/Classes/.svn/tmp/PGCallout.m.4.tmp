@@ -1,0 +1,211 @@
+//
+//  PGCallout.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 16/11/2010.
+//  Copyright 2010 Cutaway SRL. All rights reserved.
+//
+
+#import <QuartzCore/QuartzCore.h>
+
+#import "PGCallout.h"
+#import "PGMap.h"
+#import "PgConfig.h"
+
+
+@interface PGCallout()
+  - (void) showWithAnimiation:(UIView*)parent;
+  - (CGPoint) PositionCallaout:(UIView*)Callaout andPointer:(UIView*)Pointer atPosition:(CGPoint)Position withPoint:(id)Point withMap:(id)Map;
+@end
+
+@implementation PGCallout
+
+const int PaddingText = 5;
+const int Padding     = 2;
+const int PaddingSide = 30;
+
+- (id) initWithText:(NSString*)Text withTextBtm:(NSString*)TextBtm atPosition:(CGPoint)Position toPoint:(id)Point withAction:(SEL)Selector toMap:(id)Map {
+
+  m_TopLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
+  m_TopLabel.font = [UIFont fontWithName:@"Helvetica-Bold" size:18];
+  m_TopLabel.textColor = [UIColor whiteColor];
+  m_TopLabel.backgroundColor = [UIColor clearColor];
+	m_TopLabel.text = Text;
+	[m_TopLabel setNeedsLayout];
+
+  m_BtmLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
+  m_BtmLabel.font = [UIFont fontWithName:@"Helvetica" size:16];
+  m_BtmLabel.textColor = [UIColor whiteColor];
+  m_BtmLabel.backgroundColor = [UIColor clearColor];
+  m_BtmLabel.text = TextBtm;
+	[m_BtmLabel setNeedsLayout];
+  
+  m_Button = [UIButton buttonWithType:UIButtonTypeDetailDisclosure];
+  m_Button.adjustsImageWhenHighlighted = NO;
+  m_Button.userInteractionEnabled = YES;
+  m_Button.exclusiveTouch = YES;
+  [m_Button addTarget:Point action:Selector forControlEvents:UIControlEventTouchUpInside];
+  
+  CGSize tsize;
+  if ( [m_TopLabel.text sizeWithFont:m_TopLabel.font].width >= [m_BtmLabel.text sizeWithFont:m_BtmLabel.font].width )
+    tsize = [m_TopLabel.text sizeWithFont:m_TopLabel.font];
+  else
+    tsize = [m_BtmLabel.text sizeWithFont:m_BtmLabel.font];
+
+  CGSize fsize = CGSizeMake((PaddingText * 3) + tsize.width + m_Button.frame.size.width,
+                            (PaddingText * 3) + (tsize.height * 2));
+  
+  m_TopLabel.frame = CGRectMake(PaddingText, PaddingText, tsize.width, tsize.height);
+  m_BtmLabel.frame = CGRectMake(PaddingText, (PaddingText * 2) + tsize.height, tsize.width, tsize.height);
+  
+  m_Button.frame = CGRectMake((PaddingText * 2) + tsize.width,
+                              (fsize.height / 2) - (m_Button.frame.size.height / 2),
+                              m_Button.frame.size.width, m_Button.frame.size.height);
+  
+  UIView *fumetto = [[UIView alloc] initWithFrame:CGRectMake(0, 0, fsize.width, fsize.height)];
+  
+  fumetto.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.7];
+  fumetto.layer.cornerRadius = 5;
+  
+  [fumetto addSubview:m_TopLabel];
+  [fumetto addSubview:m_BtmLabel];
+  [fumetto addSubview:m_Button];
+  
+  [fumetto bringSubviewToFront:m_TopLabel];
+  [fumetto bringSubviewToFront:m_BtmLabel];
+  [fumetto bringSubviewToFront:m_Button];
+  
+  UIImage *imgptr = [[UIImage alloc] initWithContentsOfFile:[PGConfig GetBundleFile:@"Pointer" ofType:@"png"]];
+  UIImageView *pointer = [[UIImageView alloc] initWithImage:imgptr];
+  [pointer sizeToFit];
+  pointer.frame = CGRectMake(0, 0, imgptr.size.width, imgptr.size.height);
+  pointer.alpha = 0.7;
+  [imgptr release];
+
+  self = [super initWithFrame:CGRectMake(0, 0, 0, 0)];
+  if ( self ) {
+    CGPoint pos = [self PositionCallaout:fumetto andPointer:pointer atPosition:Position withPoint:Point withMap:Map];
+    self.frame = CGRectMake(pos.x, pos.y, fumetto.frame.size.width, fumetto.frame.size.height + pointer.frame.size.height);
+    self.backgroundColor = [UIColor clearColor];
+
+    [self addSubview:fumetto];
+    [self addSubview:pointer];
+
+    [self bringSubviewToFront:fumetto];
+    [self bringSubviewToFront:pointer];
+  }
+  
+  [fumetto release];
+  [pointer release];
+  
+	return self;
+}
+- (id) initWithView:(UIView*)CView andArrow:(UIImage*)arrow andPosition:(CGPoint)Position toPoint:(id)Point withAction:(SEL)Selector toMap:(id)Map {
+
+  UIImageView *pointer;
+  
+  self = [super initWithFrame:CGRectMake(0, 0, 0, 0)];
+  if ( !self ) return nil;
+
+  if (!arrow) {
+    pointer = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, 0, 10)];
+  } else {    
+    pointer = [[UIImageView alloc] initWithImage:arrow];
+    [pointer sizeToFit];
+  }
+
+  CGPoint pos = [self PositionCallaout:CView andPointer:pointer atPosition:Position withPoint:Point withMap:Map];
+  self.frame = CGRectMake(pos.x, pos.y, CView.frame.size.width, CView.frame.size.height + pointer.frame.size.height);
+
+  [self addSubview:CView];
+  [self bringSubviewToFront:CView];
+  
+  [self addSubview:pointer];
+  [self bringSubviewToFront:pointer];
+  
+  [pointer release];
+  
+	return self;
+}
+
+- (CGPoint) PositionCallaout:(UIView*)Callaout andPointer:(UIView*)Pointer atPosition:(CGPoint)Position withPoint:(id)Point withMap:(id)Map {
+  CGSize ss = CGSizeMake(Callaout.frame.size.width, Callaout.frame.size.height + Pointer.frame.size.height);
+
+  CGPoint pos = CGPointMake(Position.x - ss.width / 2, Position.y - ss.height);
+  CGPoint ppc = CGPointMake(Callaout.frame.size.width / 2, Callaout.frame.size.height + Pointer.frame.size.height / 2 - 1);
+  
+  CGPoint pan = CGPointMake(0, 0);
+  if ( pos.y < 0 ) { // Sopra
+    pos = CGPointMake(pos.x, Padding);
+    pan = CGPointMake(pan.x, ss.height + Padding - Position.y);
+  }
+  
+  if ( Position.x < (ss.width / 2 + Padding) ) { // Sinistra
+    if ( Position.x <= PaddingSide ) {
+      pan = CGPointMake(PaddingSide - Position.x, pan.y);
+      Position.x = PaddingSide;
+    }
+    pos = CGPointMake(Padding, pos.y);
+    ppc = CGPointMake(Position.x - Padding, ppc.y);
+  }
+  else if ( (Position.x + (ss.width / 2 + Padding)) > [Map bounds].size.width ) { //Destra
+    if ( ([Map frame].size.width - Position.x) < PaddingSide ) {
+      pan = CGPointMake([Map frame].size.width - Position.x - PaddingSide, pan.y);
+      Position.x += pan.x;
+    }
+    pos = CGPointMake([Map frame].size.width - ss.width - Padding, pos.y);
+    ppc = CGPointMake(Position.x - pos.x, ppc.y);
+  }
+  [Map panMapBy:pan withAnimation:YES];
+  
+  Pointer.center = ppc;
+
+  return CGPointMake(pos.x + [Map bounds].origin.x, pos.y + [Map bounds].origin.y);
+}
+
+- (void) touchesBegan:(NSSet*)touches withEvent:(UIEvent*)event {	
+	if ( self != nil ) {
+		self.hidden = YES;
+	}
+}
+
++ (PGCallout*) AddCalloutView:(NSString*)Text withTextBtm:(NSString*)TextBtm atPosition:(CGPoint)Position toPoint:(id)Point withAction:(SEL)Selector toMap:(id)Map {
+  PGCallout *callout = [[PGCallout alloc] initWithText:Text withTextBtm:TextBtm atPosition:Position toPoint:Point withAction:Selector toMap:Map];
+	[callout showWithAnimiation:Map];
+	return [callout autorelease];
+}
+
++ (PGCallout*) AddCustomView:(UIView*)view withArrow:(UIImage*)arrow AtPosition:(CGPoint)Position toPoint:(id)Point withAction:(SEL)Selector toMap:(id)Map {
+  PGCallout *callout = [[PGCallout alloc] initWithView:view andArrow:arrow andPosition:Position toPoint:Point withAction:Selector toMap:Map];
+  [callout showWithAnimiation:Map];
+  return [callout autorelease];
+}
+
+#pragma mark ANIMATION
+
+- (void) showWithAnimiation:(UIView*)parent {	
+	self.transform = CGAffineTransformMakeScale(0.8f, 0.8f);
+	[UIView beginAnimations:nil context:nil];
+	[UIView setAnimationDelegate:self];
+	[UIView setAnimationWillStartSelector:@selector(animationWillStart:context:)];
+	[UIView setAnimationDidStopSelector:@selector(animationDidStop:finished:context:)];
+	[UIView setAnimationDuration:0.1f];
+	[parent addSubview:self];
+	self.transform = CGAffineTransformMakeScale(1.2f, 1.2f);
+	[UIView commitAnimations];
+}
+- (void) animationWillStart:(NSString *)animationID context:(void *)context {
+	
+}
+- (void) animationDidStop:(NSString *)animationID finished:(NSNumber *)finished context:(void *)context {
+	self.transform = CGAffineTransformIdentity;
+}
+
+- (void)dealloc {
+  [m_TopLabel release];
+  [m_BtmLabel release];
+
+  [super dealloc];
+}
+
+@end

@@ -1,0 +1,20 @@
+//
+//  PGTableViewCell.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 22/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+
+const float CellHeight;
+
+@interface PGTableViewCell : UITableViewCell {
+  NSString *_Original;
+}
+
+@property (nonatomic, retain) NSString *Original;
+
+@end

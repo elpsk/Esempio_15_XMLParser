@@ -1,0 +1,30 @@
+//
+//  Costanti.m
+//  PGIPHONE
+//
+//  Created by Luca Drago on 06/12/10.
+//  Copyright 2010 __MyCompanyName__. All rights reserved.
+//
+#import "Costanti.h"
+
+const double deg2rad		= 0.017453292522222;
+const double a					= 6378137;
+const double e					= 0.081819;
+const double eccSquared = 0.00669438;
+const double k0					= 0.9996;
+const double l					= 4709238.7;
+const double cxTL				= -1716764.0;
+const double cyTL				= 8025973.0;
+const double c_180pi		= 57.2957795130;
+const double c_pi180		= 0.0174532925;
+const double lon_0			= 0.1570796325;
+
+const double METERS_PER_MILE					= 1609.344;
+const double MAPWIDTHMETERS						= 4709238.7;
+const int	   MAPWIDTHLEVEL1PIXELS			= 33554432;
+const int    MIN_ACCURACY							=	10;
+const int    MAX_ACCURACY							=	500;
+const int		 CONVERSION_ROUTE_LENGTH	= 1000;
+
+int BOUNDS_METERS	= 1000; // metri in più da dare al bound del percorso
+

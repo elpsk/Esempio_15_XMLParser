@@ -1,0 +1,32 @@
+//
+//  PGPoi.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 11/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGPoi.h"
+
+
+@implementation PGPoi
+@synthesize Nome=m_Nome, Tipo=m_Tipo, Lat=m_Lat, Lon=m_Lon;
+
+- (id) init {
+	self = [super init];
+	
+	if (self != nil) {		
+		m_Nome = [NSString string];
+		m_Tipo = [NSString string];
+	}	
+	return self;
+}
+
+- (void) dealloc {
+	if (m_Nome != nil) [m_Nome release];
+  if (m_Tipo != nil) [m_Tipo release];
+	
+	[super dealloc];
+}
+
+@end

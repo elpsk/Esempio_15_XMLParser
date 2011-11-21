@@ -1,0 +1,87 @@
+//
+//  PGAriaMeteoPoint.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 07/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGAriaMeteoPoint.h"
+
+
+@interface PGAriaMeteo (internals) 
+  - (void) SetImageView:(NSData*)Data;
+@end
+
+
+@implementation PGAriaMeteoPoint
+
+@synthesize AriaMeteo=_AriaMeteo, Animation=_Animation;
+
+- (id) initWithAriaMeteo:(PGAriaMeteo*)AriaMeteo withMap:(PGMap*)Map withReciver:(id)Controller {
+
+  self = [super initWith:AriaMeteo.Position pointType:PGPointTypeCustom inView:Map isTouchable:NO];
+  
+  if ( self ) {
+
+    self.tag = PGPointTagAriaMeteo;
+
+    _Controller = Controller;
+    
+    _AriaMeteo = [AriaMeteo retain];
+    
+    PGDay *day = [_AriaMeteo objectAtIndex:0];
+    PGDayPart *part = [day objectAtIndex:_AriaMeteo.Part];
+    
+    NSString *query = [NSString stringWithFormat:@"%@%@", [Map.Params.Images objectAtIndex:PGAriaMeteoImage], part.FileName];
+    
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    [dict setObject:NSStringFromSelector(@selector(SetImageView:)) forKey:@"selector"];
+    [dict setObject:query forKey:@"query"]; 
+
+    PGHttpWrapper *http = [[[PGHttpWrapper alloc] initWithTarget:self] autorelease];
+    [http performSelectorOnMainThread:@selector(RequestData:) withObject:dict waitUntilDone:NO];
+  }
+  
+  return self;
+}
+
+- (void) SetImageView:(NSData*)Data {
+  UIImage *img = [[UIImage alloc] initWithData:Data];
+
+  [super setImage:img withAnchor:CGPointMake(0.5, 0.5)];
+
+  [img release];
+}
+
+- (void) touchesEnded:(NSSet*)t withEvent:(UIEvent*)event {
+  if ( _Controller && [_Controller conformsToProtocol:@protocol(PGAriaMeteoPointDelegate)] && [_Controller respondsToSelector:@selector(PGAriaMeteoPointClicked:)] )
+    [_Controller performSelector:@selector(PGAriaMeteoPointClicked:) withObject:self];
+}
+
+- (CABasicAnimation*) Animation {
+
+  if ( !_Animation ) {
+    _Animation = [[CABasicAnimation alloc] init];
+    _Animation.keyPath = @"transform.scale";
+    _Animation.delegate = self;
+    _Animation.removedOnCompletion = NO;
+    _Animation.fillMode = kCAFillModeForwards;
+    _Animation.speed = 0.8;
+    
+    _Animation.fromValue = [NSNumber numberWithInt:0];
+    _Animation.toValue   = [NSNumber numberWithInt:1];
+  }
+  
+  return _Animation;
+}
+
+- (void)dealloc {
+  if ( _AriaMeteo ) [_AriaMeteo release];
+  if ( _Animation ) [_Animation release];
+  
+  [super dealloc];
+}
+
+
+@end

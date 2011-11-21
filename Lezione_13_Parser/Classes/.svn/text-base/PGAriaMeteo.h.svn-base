@@ -1,0 +1,89 @@
+//
+//  PGAriaMeteo.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 06/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "PGGeoResult.h"
+#import "PGSuperClass.h"
+
+
+enum {
+  PGAriaType = 0,
+  PGMeteoType,
+  PGNoneType
+};
+
+typedef struct {
+  int Minimum;
+  int Maximum;
+} PGMinMax;
+
+static inline PGMinMax PGMinMaxMake(int Minimum, int Maximum) {
+  PGMinMax temp;
+  temp.Minimum = Minimum;
+  temp.Maximum = Maximum;
+  return temp;
+}
+
+typedef struct{
+  NSString *Direction;
+  float     Speed; 
+} PGWind;
+
+static inline PGWind PGWindMake(NSString *Direction, int Speed) {
+  PGWind wind;
+  wind.Direction = Direction;
+  wind.Speed = Speed;
+  return wind;
+}
+
+@interface PGDayPart : NSObject {
+  int m_Id, m_Value, m_Temperature, m_Type;
+  float     m_Rain;
+  PGWind    m_Wind;
+  NSString *m_Text;
+}
+
+@property (assign) int Id;
+@property (assign) int Type;
+@property (assign) int Value;
+@property (assign) int Temperature;
+@property (assign) float Rain;
+@property (assign) PGWind Wind;
+@property (nonatomic, retain) NSString *Text;
+
+@property (readonly) NSString *Description;
+@property (readonly) NSString *FileName;
+
+@end
+
+
+@interface PGDay : PGMutableArray {
+  NSDate   *m_Date;
+  PGMinMax  m_RangeTemperature;
+  int       m_Value;
+}
+
+@property (nonatomic, retain) NSDate *Date;
+@property (assign) PGMinMax RangeTemperature;
+@property (assign) int Value;
+
+@end
+
+
+@interface PGAriaMeteo : PGMutableArray {
+  int m_Id, m_Part;
+  NSString *m_Location;
+  CLLocationCoordinate2D m_Position;
+}
+
+@property (assign) int Id;
+@property (assign) int Part;
+@property (nonatomic, retain) NSString *Location;
+@property (assign) CLLocationCoordinate2D Position;
+
+@end

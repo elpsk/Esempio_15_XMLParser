@@ -1,0 +1,629 @@
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/pg-iPhone/!svn/ver/849/trunk/PGLib/Classes
+END
+Costanti.m
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/599/trunk/PGLib/Classes/Costanti.m
+END
+PGGpsPoint.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/pg-iPhone/!svn/ver/738/trunk/PGLib/Classes/PGGpsPoint.h
+END
+PGException.m
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/641/trunk/PGLib/Classes/PGException.m
+END
+TBXML.m
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/pg-iPhone/!svn/ver/837/trunk/PGLib/Classes/TBXML.m
+END
+PGBoundEx.h
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/622/trunk/PGLib/Classes/PGBoundEx.h
+END
+PGEngine.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGEngine.h
+END
+PGConfig.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/511/trunk/PGLib/Classes/PGConfig.h
+END
+PGAutocomplete.m
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGAutocomplete.m
+END
+PGGpsPoint.m
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/pg-iPhone/!svn/ver/829/trunk/PGLib/Classes/PGGpsPoint.m
+END
+PGBoundEx.m
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/554/trunk/PGLib/Classes/PGBoundEx.m
+END
+PGEngine.m
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/825/trunk/PGLib/Classes/PGEngine.m
+END
+PGConfig.m
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/530/trunk/PGLib/Classes/PGConfig.m
+END
+PGDevice.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/813/trunk/PGLib/Classes/PGDevice.h
+END
+PGReachability.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/pg-iPhone/!svn/ver/530/trunk/PGLib/Classes/PGReachability.h
+END
+PGStreetView.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/pg-iPhone/!svn/ver/358/trunk/PGLib/Classes/PGStreetView.h
+END
+PGCircle.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/723/trunk/PGLib/Classes/PGCircle.h
+END
+PGRouteCircles.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/pg-iPhone/!svn/ver/716/trunk/PGLib/Classes/PGRouteCircles.h
+END
+PGDevice.m
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGDevice.m
+END
+PGPOIParser.h
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/763/trunk/PGLib/Classes/PGPOIParser.h
+END
+PGReachability.m
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGReachability.m
+END
+PGStreetView.m
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/pg-iPhone/!svn/ver/530/trunk/PGLib/Classes/PGStreetView.m
+END
+PGCircle.m
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/768/trunk/PGLib/Classes/PGCircle.m
+END
+PGRouteCircles.m
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/pg-iPhone/!svn/ver/716/trunk/PGLib/Classes/PGRouteCircles.m
+END
+PGFormule.h
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGFormule.h
+END
+PGPOIParser.m
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/763/trunk/PGLib/Classes/PGPOIParser.m
+END
+PGClippedView.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/832/trunk/PGLib/Classes/PGClippedView.h
+END
+PGFormule.m
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/793/trunk/PGLib/Classes/PGFormule.m
+END
+PGHttpWrapper.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGHttpWrapper.h
+END
+PGClippedView.m
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/832/trunk/PGLib/Classes/PGClippedView.m
+END
+PGTableViewCell.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/pg-iPhone/!svn/ver/796/trunk/PGLib/Classes/PGTableViewCell.h
+END
+PGSuperClass.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/pg-iPhone/!svn/ver/767/trunk/PGLib/Classes/PGSuperClass.h
+END
+PGHttpWrapper.m
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGHttpWrapper.m
+END
+PGTableViewCell.m
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGTableViewCell.m
+END
+PGHttpRequest.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/473/trunk/PGLib/Classes/PGHttpRequest.h
+END
+PGGps.h
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/pg-iPhone/!svn/ver/793/trunk/PGLib/Classes/PGGps.h
+END
+PGPoint.h
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/pg-iPhone/!svn/ver/836/trunk/PGLib/Classes/PGPoint.h
+END
+PGSuperClass.m
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/pg-iPhone/!svn/ver/767/trunk/PGLib/Classes/PGSuperClass.m
+END
+PGAutocompleteAlgoritm.c
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGAutocompleteAlgoritm.c
+END
+PGPointPlaceholder.h
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/pg-iPhone/!svn/ver/768/trunk/PGLib/Classes/PGPointPlaceholder.h
+END
+PGParser.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGParser.h
+END
+PGRStep.h
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/pg-iPhone/!svn/ver/840/trunk/PGLib/Classes/PGRStep.h
+END
+PGHttpRequest.m
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/433/trunk/PGLib/Classes/PGHttpRequest.m
+END
+PGGps.m
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/pg-iPhone/!svn/ver/835/trunk/PGLib/Classes/PGGps.m
+END
+PGPoint.m
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/pg-iPhone/!svn/ver/836/trunk/PGLib/Classes/PGPoint.m
+END
+PGRoute.h
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/pg-iPhone/!svn/ver/842/trunk/PGLib/Classes/PGRoute.h
+END
+PGHtmlManager.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/804/trunk/PGLib/Classes/PGHtmlManager.h
+END
+PGAutocompleteAlgoritm.h
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGAutocompleteAlgoritm.h
+END
+PGPointPlaceholder.m
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/pg-iPhone/!svn/ver/831/trunk/PGLib/Classes/PGPointPlaceholder.m
+END
+PGParser.m
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/841/trunk/PGLib/Classes/PGParser.m
+END
+PGRStep.m
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/pg-iPhone/!svn/ver/840/trunk/PGLib/Classes/PGRStep.m
+END
+PGRouteParams.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/716/trunk/PGLib/Classes/PGRouteParams.h
+END
+PGRoute.m
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/pg-iPhone/!svn/ver/842/trunk/PGLib/Classes/PGRoute.m
+END
+PGHtmlManager.m
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/804/trunk/PGLib/Classes/PGHtmlManager.m
+END
+PGSvegliaGps.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/pg-iPhone/!svn/ver/835/trunk/PGLib/Classes/PGSvegliaGps.h
+END
+PGRouteParams.m
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/716/trunk/PGLib/Classes/PGRouteParams.m
+END
+PGSvegliaGps.m
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/pg-iPhone/!svn/ver/835/trunk/PGLib/Classes/PGSvegliaGps.m
+END
+PGWayPoint.h
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/pg-iPhone/!svn/ver/586/trunk/PGLib/Classes/PGWayPoint.h
+END
+PGMap.h
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGMap.h
+END
+PGWayPoint.m
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/pg-iPhone/!svn/ver/716/trunk/PGLib/Classes/PGWayPoint.m
+END
+PGAriaMeteoPoint.h
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/pg-iPhone/!svn/ver/829/trunk/PGLib/Classes/PGAriaMeteoPoint.h
+END
+PGMap.m
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/pg-iPhone/!svn/ver/829/trunk/PGLib/Classes/PGMap.m
+END
+PGTableView.h
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGTableView.h
+END
+PGRegion.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/622/trunk/PGLib/Classes/PGRegion.h
+END
+PGEngineItem.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/pg-iPhone/!svn/ver/816/trunk/PGLib/Classes/PGEngineItem.h
+END
+PGAriaMeteoPoint.m
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/pg-iPhone/!svn/ver/829/trunk/PGLib/Classes/PGAriaMeteoPoint.m
+END
+PGPoi.h
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/pg-iPhone/!svn/ver/763/trunk/PGLib/Classes/PGPoi.h
+END
+PGTableView.m
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGTableView.m
+END
+PGRegion.m
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/592/trunk/PGLib/Classes/PGRegion.m
+END
+PGTextField.h
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/813/trunk/PGLib/Classes/PGTextField.h
+END
+PGEngineItem.m
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/pg-iPhone/!svn/ver/816/trunk/PGLib/Classes/PGEngineItem.m
+END
+PGPoi.m
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/pg-iPhone/!svn/ver/763/trunk/PGLib/Classes/PGPoi.m
+END
+PGTextField.m
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/847/trunk/PGLib/Classes/PGTextField.m
+END
+PGCompassView.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/738/trunk/PGLib/Classes/PGCompassView.h
+END
+PGCallout.h
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/829/trunk/PGLib/Classes/PGCallout.h
+END
+PGCompass.h
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/742/trunk/PGLib/Classes/PGCompass.h
+END
+PGGpsInfo.h
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/768/trunk/PGLib/Classes/PGGpsInfo.h
+END
+PGCompassView.m
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/738/trunk/PGLib/Classes/PGCompassView.m
+END
+PGAriaMeteo.h
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGAriaMeteo.h
+END
+PGCallout.m
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/830/trunk/PGLib/Classes/PGCallout.m
+END
+PGEngineTableView.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/pg-iPhone/!svn/ver/845/trunk/PGLib/Classes/PGEngineTableView.h
+END
+PGGeoResult.h
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/835/trunk/PGLib/Classes/PGGeoResult.h
+END
+PGCompass.m
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/742/trunk/PGLib/Classes/PGCompass.m
+END
+PGGpsInfo.m
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/pg-iPhone/!svn/ver/768/trunk/PGLib/Classes/PGGpsInfo.m
+END
+PGAriaMeteo.m
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/767/trunk/PGLib/Classes/PGAriaMeteo.m
+END
+PGEngineTableView.m
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/pg-iPhone/!svn/ver/849/trunk/PGLib/Classes/PGEngineTableView.m
+END
+PGIPHONEAppDelegate.h
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/pg-iPhone/!svn/ver/358/trunk/PGLib/Classes/PGIPHONEAppDelegate.h
+END
+PGGeoResult.m
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/835/trunk/PGLib/Classes/PGGeoResult.m
+END
+PGGeoStatus.h
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/804/trunk/PGLib/Classes/PGGeoStatus.h
+END
+PGRouteResults.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/pg-iPhone/!svn/ver/839/trunk/PGLib/Classes/PGRouteResults.h
+END
+PGIPHONEViewController.h
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/pg-iPhone/!svn/ver/843/trunk/PGLib/Classes/PGIPHONEViewController.h
+END
+NSDataAdditions.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/pg-iPhone/!svn/ver/801/trunk/PGLib/Classes/NSDataAdditions.h
+END
+PGIPHONEAppDelegate.m
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/pg-iPhone/!svn/ver/528/trunk/PGLib/Classes/PGIPHONEAppDelegate.m
+END
+PGParams.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGParams.h
+END
+PGGeoStatus.m
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/804/trunk/PGLib/Classes/PGGeoStatus.m
+END
+PGRouteImages.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/838/trunk/PGLib/Classes/PGRouteImages.h
+END
+PGRouteResults.m
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/pg-iPhone/!svn/ver/839/trunk/PGLib/Classes/PGRouteResults.m
+END
+PGIPHONEViewController.m
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/pg-iPhone/!svn/ver/843/trunk/PGLib/Classes/PGIPHONEViewController.m
+END
+NSDataAdditions.m
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/pg-iPhone/!svn/ver/801/trunk/PGLib/Classes/NSDataAdditions.m
+END
+PGParams.m
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGParams.m
+END
+PGRouteImages.m
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/pg-iPhone/!svn/ver/838/trunk/PGLib/Classes/PGRouteImages.m
+END
+Costanti.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/pg-iPhone/!svn/ver/599/trunk/PGLib/Classes/Costanti.h
+END
+PGException.h
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/pg-iPhone/!svn/ver/641/trunk/PGLib/Classes/PGException.h
+END
+TBXML.h
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/pg-iPhone/!svn/ver/403/trunk/PGLib/Classes/TBXML.h
+END
+PGAutocomplete.h
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/pg-iPhone/!svn/ver/821/trunk/PGLib/Classes/PGAutocomplete.h
+END

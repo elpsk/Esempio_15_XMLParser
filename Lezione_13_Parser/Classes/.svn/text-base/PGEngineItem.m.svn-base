@@ -1,0 +1,51 @@
+//
+//  PGEngineItem.m
+//  PGIPHONE
+//
+//  Created by Giovanni Catapano on 02/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGEngineItem.h"
+
+@implementation PGEngineItem
+@synthesize Id=_Id, Name=_Name, UserDetail=_UserDetail,
+    UrlDetail=_UrlDetail, UrlDetailMobile=_UrlDetailMobile, Category=_Category,
+    Logo=_Logo, Address=_Address, City=_City,
+    Province=_Province, Zip=_Zip, Country=_Country,
+    Coord=_Coord, Distance=_Distance, EmailAddress=_EmailAddress,
+    Tag=_Tag;
+
+- (id) init {
+  self = [super init];
+  if ( !self ) return nil;
+  
+  _Id = @""; _Name = @""; _UserDetail = @"";
+  _UrlDetail = @""; _UrlDetailMobile = @""; _Category = @"";
+  _Logo = @""; _Address = @""; _City = @"";
+  _Province = @""; _Zip = @""; _Country = @"";
+  _Distance = 0; _EmailAddress = @"";
+  _Tag = 0;
+  
+  return self;
+}
+
+- (void) dealloc {
+  if ( _Id ) [_Id release];
+  if ( _Name ) [_Name release];
+  if ( _UserDetail ) [_UserDetail release];
+  if ( _UrlDetail ) [_UrlDetail release];
+  if ( _UrlDetailMobile ) [_UrlDetailMobile release];
+  if ( _Category ) [_Category release];
+  if ( _Logo ) [_Logo release];
+  if ( _Address ) [_Address release];
+  if ( _City ) [_City release];
+  if ( _Province ) [_Province release];
+  if ( _Zip ) [_Zip release];
+  if ( _Country ) [_Country release];
+  if ( _EmailAddress ) [_EmailAddress release];
+  
+  [super dealloc];
+}
+
+@end

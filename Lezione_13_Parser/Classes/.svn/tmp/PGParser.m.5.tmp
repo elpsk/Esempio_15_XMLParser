@@ -1,0 +1,710 @@
+//
+//  Parser.m
+//  tc
+//
+//  Created by Gianluca Folloni on 03/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import "PGParser.h"
+#import "TBXML.h"
+#import "PGGeoResult.h"
+#import "PGFormule.h"
+#import "PGException.h"
+#import "Costanti.h"
+#import "XPathQuery.h"
+
+@interface PGParser (internals)
++ (void) SetLocationAmbiguty:(PGGeoResult*)Item intoXmlElement:(TBXMLElement*)Element;
++ (void) SetTopoAmbiguty:(PGGeoResult*)Item intoXmlElement:(TBXMLElement*)Element; 
++ (void) SetCenter:(PGGeoResult*)Item withLevel:(int)Level intoXmlElement:(TBXMLElement*)Element; 
++ (void) SetWayPoints:(PGRouteResults*)Item intoXmlElement:(TBXMLElement*)Element;
++ (void) SetRegions:(PGRouteResults*)Item intoXmlElement:(TBXMLElement*)Element;
++ (void) SetCoords:(PGRouteResults*)Item withPFR:(TBXMLElement*)PFR intoXmlElement:(TBXMLElement*)Element;
++ (void) SetDistanceAndSteps:(PGRouteResults*)Item withPFR:(TBXMLElement*)PFR intoXmlElement:(TBXMLElement*)Element;
+@end
+
+@implementation PGParser
+
+#pragma mark -
+#pragma mark CONFIGURATION PARSER
+
+/**
+ * Parser lista server dei vari servizi (geo/routing)
+ */
+
++ (void) MapServerParser:(NSMutableArray*)Servers inputXml:(NSString*)Xml {
+  @try {
+    TBXML *doc = [TBXML tbxmlWithXMLString:Xml];
+    
+    if ( !doc.rootXMLElement )
+      @throw [PGConfigException exceptionWithReason:@"MapServer: No root tag found"];
+    
+    TBXMLElement *servers = [TBXML childElementNamed:@"servers" parentElement:doc.rootXMLElement];
+    if ( !servers )
+      @throw [PGConfigException exceptionWithReason:@"MapServer: <servers> not found"];
+    
+    int count = [[TBXML valueOfAttributeNamed:@"count" forElement:servers] intValue];
+    
+    TBXMLElement *server = [TBXML childElementNamed:@"server" parentElement:servers];
+		while ( server != nil ) {
+      [Servers addObject:[TBXML textForElement:server]];
+      server = [TBXML nextSiblingNamed:@"server" searchFromElement:server];
+      count--;
+    }
+    
+    if ( count != 0 )
+      @throw [PGConfigException exceptionWithReason:@"MapServer: numero di <server> sbagliato"];    
+  }
+  @catch ( PGConfigException *e ) {
+    NSLog(@"%@%@", [e name], [e reason]);
+    @throw e;
+  }
+  @finally {
+  }
+}
+
+/**
+ * Parser Bound degli Zoom a livello strada
+ */
+
++ (void) MapBoundsParser:(NSMutableArray*)Bounds inputXml:(NSString*)Xml {
+  @try {
+    TBXML *doc = [TBXML tbxmlWithXMLString:Xml];
+    
+    if ( !doc.rootXMLElement )
+      @throw [PGConfigException exceptionWithReason:@"MapBounds: No root tag found"];
+    
+    TBXMLElement *bounds = [TBXML childElementNamed:@"bounds" parentElement:doc.rootXMLElement];
+    if ( !bounds )
+      @throw [PGConfigException exceptionWithReason:@"MapBounds: <bounds> not found"];
+    
+    int count = [[TBXML valueOfAttributeNamed:@"count" forElement:bounds] intValue];
+    
+    TBXMLElement *bound = [TBXML childElementNamed:@"bound" parentElement:bounds];
+		while ( bound != nil ) {
+      TBXMLElement *miny = [TBXML childElementNamed:@"miny" parentElement:bound];
+      TBXMLElement *minx = [TBXML childElementNamed:@"minx" parentElement:bound];
+      TBXMLElement *maxy = [TBXML childElementNamed:@"maxy" parentElement:bound];
+      TBXMLElement *maxx = [TBXML childElementNamed:@"maxx" parentElement:bound];
+      
+      PGBound pgb = PGBoundMake([[TBXML textForElement:miny] floatValue], [[TBXML textForElement:minx] floatValue],
+                                [[TBXML textForElement:maxy] floatValue], [[TBXML textForElement:maxx] floatValue]);
+      [Bounds addObject:[NSValue valueWithBytes:&pgb objCType:@encode(PGBound)]];
+      
+      bound = [TBXML nextSiblingNamed:@"bound" searchFromElement:bound];
+      count--;
+    }
+    
+    if ( count != 0 )
+      @throw [PGConfigException exceptionWithReason:@"MapBounds: numero di <bound> sbagliato"];    
+  }
+  @catch ( PGConfigException *e ) {
+    NSLog(@"%@%@", [e name], [e reason]);
+    @throw e;
+  }
+  @finally {
+  }
+}
+
+/**
+ * Parser Configurazione Mappe
+ */
+
++ (void) MapConfigParser:(PGParams*)Params inputXml:(NSString*)Xml {  
+  @try {
+    TBXML *doc = [TBXML tbxmlWithXMLString:Xml];
+    if ( !doc.rootXMLElement )
+      @throw [PGConfigException exceptionWithReason:@"MapConfig: No root tag found"];
+    
+    Params.Version = [TBXML valueOfAttributeNamed:@"version" forElement:doc.rootXMLElement];
+    
+    TBXMLElement *sections = [TBXML childElementNamed:@"sections" parentElement:doc.rootXMLElement];
+    if ( !sections )
+      @throw [PGConfigException exceptionWithReason:@"MapConfig: <sections> not found"];
+    int count = 0;
+    
+    TBXMLElement *section = [TBXML childElementNamed:@"section" parentElement:sections];
+    while ( section ) {  
+      NSMutableArray *tilesource = [NSMutableArray array];
+      
+      TBXMLElement *urls = [TBXML childElementNamed:@"urls" parentElement:section];
+      TBXMLElement *url = [TBXML childElementNamed:@"url" parentElement:urls];
+      while ( url ) {
+        [tilesource addObject:[NSString stringWithFormat:@"%@&sito=%@", [TBXML textForElement:url], Params.Sito]];
+        url = [TBXML nextSiblingNamed:@"url" searchFromElement:url];
+      }
+      
+      CloserZRange zr = CloserZRangeMake([[TBXML valueOfAttributeNamed:@"minz" forElement:section] floatValue],
+                                         [[TBXML valueOfAttributeNamed:@"maxz" forElement:section] floatValue]);
+      switch ( count ) {
+        case PGMapTypeStandard:
+          Params.standardTileSources = tilesource;
+          Params.standardZoomRange   = zr;
+          break;
+        case PGMapTypeOrto:
+          Params.ortoTileSources = tilesource;
+          Params.ortoZoomRange   = zr;
+          break;
+        case PGMapTypeMix:
+          Params.mixTileSources = tilesource;
+          Params.mixZoomRange   = zr;
+          break;
+        default:
+          break;
+      }
+      
+      TBXMLElement *copy = [TBXML childElementNamed:@"copy" parentElement:section];
+      [Params.Copies insertObject:[TBXML textForElement:copy] atIndex:count];
+      
+      section = [TBXML nextSiblingNamed:@"section" searchFromElement:section];
+      count++;
+    }
+    
+    if ( count != [[TBXML valueOfAttributeNamed:@"count" forElement:sections] intValue] )
+      @throw [PGConfigException exceptionWithReason:@"MapConfigParser: tag <section> mancante"];
+    
+    TBXMLElement *generic = [TBXML childElementNamed:@"generic" parentElement:doc.rootXMLElement];
+    if ( generic ) {
+      TBXMLElement *route = [TBXML childElementNamed:@"route" parentElement:generic];
+      if ( route ){
+				//Params.KmCache = [[TBXML valueOfAttributeNamed:@"km" forElement:route] intValue];
+				Params.PointsForRegions = [[TBXML valueOfAttributeNamed:@"pfr" forElement:route] intValue];
+			} 
+      
+      TBXMLElement *map = [TBXML childElementNamed:@"map" parentElement:generic];
+      if ( map ) {
+				if ( Params.MapIncr == -1 ) Params.MapIncr = [[TBXML valueOfAttributeNamed:@"incr" forElement:map] intValue];
+				if ( Params.ToClip == -1 )  Params.ToClip  = [[TBXML valueOfAttributeNamed:@"toclip" forElement:map] intValue];
+			}
+    }
+  }
+  @catch ( PGConfigException *e ) {
+    NSLog(@"%@%@", [e name], [e reason]);
+  }
+  @finally {
+  }
+}
+
+
+#pragma mark -
+#pragma mark LBS PARSER
+
+/**
+ * Parser LBS
+ */
+
++ (NSMutableArray*) LbsParser:(NSString*)Query withConfig:(PGParams*)Config {
+  NSMutableArray *array = [NSMutableArray array];
+  [PGParser LbsParser:Query withConfig:Config withResult:array];
+  return array;
+}
+
++ (int) LbsParser:(NSString *)Query withConfig:(PGParams *)Config withResult:(NSMutableArray*)Result {
+ int outcode = 0;
+
+  @try {
+    NSString *url = [NSString stringWithFormat:[Config.Servers objectAtIndex:PGServerLbs], [Query stringByReplacingOccurrencesOfString:@" " withString:@"+"]];
+    TBXML *doc = [TBXML tbxmlWithURL:[NSURL URLWithString:url]];
+    if ( !doc.rootXMLElement )
+      @throw [NSException exceptionWithName:@"PGParser::LbsParser" reason:@"No root tag found" userInfo:nil];
+    
+    TBXMLElement *el = [TBXML childElementNamed:@"outcod" parentElement:doc.rootXMLElement];
+    outcode = [[TBXML textForElement:el] intValue];
+    
+    int numres = 0;
+    el = [TBXML childElementNamed:@"numres" parentElement:doc.rootXMLElement];
+    if ( el ) numres = [[TBXML textForElement:el] intValue];
+    
+    int level = -1;
+    el  = [TBXML childElementNamed:@"level_coord" parentElement:doc.rootXMLElement];
+    if ( el ) level = [[TBXML textForElement:el] intValue];
+    
+    switch ( outcode ) {
+      case 0:
+      case 4:
+      case 5:
+      case 8:
+      case 9:
+      case 40: {
+        el = [TBXML childElementNamed:@"Addr_Center" parentElement:doc.rootXMLElement];
+        if ( !el )
+          @throw [NSException exceptionWithName:@"PGParser::LbsParser" reason:@"<Addr_Center> non esiste" userInfo:nil];
+        
+        PGGeoResult *item = [[PGGeoResult alloc] init];
+        [self SetCenter:item withLevel:level intoXmlElement:el];
+        [Result addObject:item];
+        [item release];
+        break;
+      }
+      case 1:
+      case 10: {
+        el = [TBXML childElementNamed:@"Addr_Choice" parentElement:doc.rootXMLElement];
+        if ( !el )
+          @throw [NSException exceptionWithName:@"PGParser::LbsParser" reason:@"<Addr_Choice> non esiste" userInfo:nil];
+        
+        el = [TBXML childElementNamed:@"Topo_Addr_U" parentElement:el];
+        if ( !el )
+          @throw [NSException exceptionWithName:@"PGParser::LbsParser" reason:@"<Topo_Addr_U> non esiste" userInfo:nil];
+        
+        int count = 0;
+        while ( el ) {
+          PGGeoResult *item = [[PGGeoResult alloc] init];
+          [self SetLocationAmbiguty:item intoXmlElement:el];
+          [Result addObject:item];
+          [item release];
+          el = [TBXML nextSiblingNamed:@"Topo_Addr_U" searchFromElement:el];
+          count++;
+        }
+        if ( numres != count )
+          @throw [NSException exceptionWithName:@"PGParser::LbsParser" reason:@"<Topo_Addr_U> non completi" userInfo:nil];
+        break;
+      }
+      case 2: {
+        el = [TBXML childElementNamed:@"Addr_Center" parentElement:doc.rootXMLElement];
+        if ( !el )
+          @throw [NSException exceptionWithName:@"PGParser::LbsParser" reason:@"<Addr_Center> in ambiguità di indirizzo non esiste" userInfo:nil];
+        
+        PGGeoResult *ic = [[PGGeoResult alloc] init];
+        [self SetCenter:ic withLevel:level intoXmlElement:el];
+        
+        el = [TBXML childElementNamed:@"Addr_Choice" parentElement:doc.rootXMLElement];
+        if ( !el )
+          @throw [NSException exceptionWithName:@"PGParser::LbsParser" reason:@"<Addr_Choice> non esiste" userInfo:nil];
+        
+        el = [TBXML childElementNamed:@"Topo_Addr_U" parentElement:el];
+        if ( !el )
+          @throw [NSException exceptionWithName:@"PGParser::LbsParser" reason:@"<Topo_Addr_U> non esiste" userInfo:nil];
+        
+        int count = 0;
+        while ( el ) {
+					PGGeoResult *item = [ic copy];
+					[self SetTopoAmbiguty:item intoXmlElement:el];
+          [Result addObject:item];
+          [item release];
+          el = [TBXML nextSiblingNamed:@"Topo_Addr_U" searchFromElement:el];
+          count++;
+        }
+        [ic release];
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  @catch ( NSException *e ) {
+    NSLog(@"%@%@", [e name], [e reason]);
+  }
+  @finally {
+  }
+  return outcode;
+}
+
++ (void) ReverseParser:(PGGeoResult*)Geo inputXml:(NSString*)Xml {
+  @try {
+    TBXML *doc = [TBXML tbxmlWithXMLString:Xml];
+    
+    if ( !doc.rootXMLElement )
+      @throw [PGLbsException exceptionWithReason:@"Reverse: No root tag found"];
+    
+    TBXMLElement *revgeo = [TBXML childElementNamed:@"RevGeo_Choice" parentElement:doc.rootXMLElement];
+    if ( !revgeo )
+      @throw [PGLbsException exceptionWithReason:@"Reverse: <RevGeo_Choice> not found"];
+    
+    TBXMLElement *revdata = [TBXML childElementNamed:@"RevGeoData" parentElement:revgeo];
+    if ( !revdata )
+      @throw [PGLbsException exceptionWithReason:@"Reverse: <RevGeoData> not found"];
+    
+    [PGParser SetCenter:Geo withLevel:0 intoXmlElement:revdata];
+  }
+  @catch ( PGLbsException *e ) {
+    NSLog(@"%@%@", [e name], [e reason]);
+  }
+  @finally {
+  }
+}
+
++ (void) SetLocationAmbiguty:(PGGeoResult*)Item intoXmlElement:(TBXMLElement*)Element {
+  TBXMLElement *el = [TBXML childElementNamed:@"reg" parentElement:Element];
+  Item.Regione = el ? [TBXML textForElement:el] : [NSString string];  
+  
+  el = [TBXML childElementNamed:@"prov" parentElement:Element];
+  Item.Provincia = el ? [TBXML textForElement:el] : [NSString string];
+  
+  el = [TBXML childElementNamed:@"com" parentElement:Element];
+  Item.Comune = el ? [TBXML textForElement:el] : [NSString string];
+  
+  el = [TBXML childElementNamed:@"fraz" parentElement:Element];
+  Item.Frazione = el ? [TBXML textForElement:el] : [NSString string];
+  
+  el = [TBXML childElementNamed:@"toponimo" parentElement:Element];
+  Item.Indirizzo = el ? [TBXML textForElement:el] : [NSString string];
+  
+  el = [TBXML childElementNamed:@"raggr" parentElement:Element];
+  Item.Zona = el ? [TBXML textForElement:el] : [NSString string];  
+  
+  float lat = 0.0, lon = 0.0;
+  el = [TBXML childElementNamed:@"ipsilon" parentElement:Element];
+  if ( el ) lat = [[TBXML textForElement:el] floatValue];
+  
+  el = [TBXML childElementNamed:@"ics" parentElement:Element];
+  if ( el ) lon = [[TBXML textForElement:el] floatValue];
+  
+  Item.Posizione = PGLocationCoordinate2DMake(lat, lon);
+}  
+
++ (void) SetTopoAmbiguty: (PGGeoResult*)Item intoXmlElement:(TBXMLElement*)Element {
+  TBXMLElement *el = [TBXML childElementNamed:@"com" parentElement:Element];
+  if ( el ) Item.Comune = [TBXML textForElement:el];
+  
+  el = [TBXML childElementNamed:@"fraz" parentElement:Element];
+  if ( el ) Item.Frazione = [TBXML textForElement:el];
+  
+  el = [TBXML childElementNamed:@"toponimo" parentElement:Element];
+  Item.Indirizzo = el ? [TBXML textForElement:el] : [NSString string];
+  
+  float lat = 0.0, lon = 0.0;
+  el = [TBXML childElementNamed:@"ipsilon" parentElement:Element];
+  if ( el ) lat = [[TBXML textForElement:el] floatValue];
+  
+  el = [TBXML childElementNamed:@"ics" parentElement:Element];
+  if ( el ) lon = [[TBXML textForElement:el] floatValue];
+  
+  Item.Posizione = PGLocationCoordinate2DMake(lat, lon);
+}
+
++ (void) SetCenter: (PGGeoResult*)Item withLevel:(int)Level intoXmlElement:(TBXMLElement*)Element {
+  TBXMLElement *el = [TBXML childElementNamed:@"reg" parentElement:Element];
+  Item.Regione = el ? [TBXML textForElement:el] : [NSString string];
+  
+  el = [TBXML childElementNamed:@"prov" parentElement:Element];
+  Item.Provincia = el ? [TBXML textForElement:el] : [NSString string];
+  
+  el = [TBXML childElementNamed:@"com" parentElement:Element];
+  Item.Comune = el ? [TBXML textForElement:el] : [NSString string];
+  
+  el = [TBXML childElementNamed:@"fraz" parentElement:Element];
+  Item.Frazione = el ? [TBXML textForElement:el] : [NSString string];
+  
+  switch ( Level ) {
+    case 0:
+    case 1:
+      el = [TBXML childElementNamed:@"civico" parentElement:Element];
+      Item.Civico = el ? [[TBXML textForElement:el] intValue] : 0;
+    case 2: 
+      el = [TBXML childElementNamed:@"toponimo" parentElement:Element];
+      Item.Indirizzo = el ? [TBXML textForElement:el] : [NSString string];
+      break;
+    default:
+      Item.Indirizzo = [NSString string];
+      Item.Civico = 0;
+      break;
+  }
+  
+  el = [TBXML childElementNamed:@"raggr" parentElement:Element];
+  Item.Zona = el ? [TBXML textForElement:el] : [NSString string];  
+  
+  float lat = 0.0, lon = 0.0;
+  el = [TBXML childElementNamed:@"ipsilon" parentElement:Element];
+  if ( el ) lat = [[TBXML textForElement:el] floatValue];
+  
+  el = [TBXML childElementNamed:@"ics" parentElement:Element];
+  if ( el ) lon = [[TBXML textForElement:el] floatValue];
+  
+  Item.Posizione = PGLocationCoordinate2DMake(lat, lon);
+}
+
+
+#pragma mark -
+#pragma mark ROUTING PARSER
+
++ (void) routingParser:(PGRouteResults *)RouteResults inputXML:(NSString*)xml
+{
+  int MsgId = 0;
+	@try 
+	{
+    XmlDoc = xml;
+
+		TBXML *doc = [TBXML tbxmlWithXMLString:xml];
+		if ( !doc.rootXMLElement )
+      @throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"No root tag found" userInfo:nil];
+    
+    // msg CHECK
+    TBXMLElement *msg = [TBXML childElementNamed:@"msg" parentElement:doc.rootXMLElement];
+		if (!msg)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<msg>: node msg is not preset" userInfo:nil];
+    
+    // <msg id="0">OK</msg>
+    MsgId = [[TBXML valueOfAttributeNamed:@"id" forElement:msg] intValue];
+    if (MsgId != 0) @throw [PGRouteException exceptionWithCode:MsgId];
+    
+		// START - routing
+		TBXMLElement *req = [TBXML childElementNamed:@"req" parentElement:doc.rootXMLElement];
+		if (!req)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<req>: node req is not preset" userInfo:nil];
+    
+		// ROUTE ID
+		TBXMLElement *routeId = [TBXML childElementNamed:@"routeId" parentElement:req];
+		if (!routeId)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<routeId>: node routeId is not preset" userInfo:nil];
+		RouteResults.RouteId = [[TBXML textForElement:routeId] intValue];
+		
+		// WAY POINTS		
+		TBXMLElement *way_points = [TBXML childElementNamed:@"way_points" parentElement:doc.rootXMLElement];
+		if (!way_points)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<way_points>: node way_points is not preset" userInfo:nil];
+		TBXMLElement *way_point = [TBXML childElementNamed:@"way_point" parentElement:way_points];
+		if (!way_point)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<way_point>: node way_point is not preset" userInfo:nil];
+		[self SetWayPoints:RouteResults intoXmlElement:way_point];
+		
+		// REGION		
+		TBXMLElement *regions = [TBXML childElementNamed:@"regions" parentElement:doc.rootXMLElement];
+		if (!regions)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<regions>: node regions is not preset" userInfo:nil];
+		[self SetRegions:RouteResults intoXmlElement:regions];
+    
+		// COORDS		
+		TBXMLElement *pfr = [TBXML childElementNamed:@"pfr" parentElement:req];
+		
+		TBXMLElement *coords = [TBXML childElementNamed:@"coords" parentElement:doc.rootXMLElement];
+		if (!coords)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<coords>: node coords is not preset" userInfo:nil];
+		
+		[self SetCoords:RouteResults withPFR:pfr intoXmlElement:coords];
+		
+    
+		// RSTEP and TOTAL DISTANCE		
+		TBXMLElement *rplanNodes = [TBXML childElementNamed:@"rplan" parentElement:doc.rootXMLElement];
+		if (!rplanNodes)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<rplanNodes>: node rplanNodes is not preset" userInfo:nil];
+		[self SetDistanceAndSteps:RouteResults withPFR:pfr intoXmlElement:rplanNodes];
+  	// END
+	}
+  @catch ( PGRouteException* e ) {
+    if (MsgId != 0) @throw e;    
+  }
+	@catch (NSException * e) 
+	{
+		NSLog(@"%s %@ %@", __FUNCTION__, [e name], [e reason]);
+	}
+	@finally { }
+}
+
++ (void) SetWayPoints:(PGRouteResults*)Item intoXmlElement:(TBXMLElement*)Element
+{
+	while (Element) 
+	{
+		NSString *x = [TBXML  valueOfAttributeNamed:@"x" forElement:Element];
+		NSString *y = [TBXML  valueOfAttributeNamed:@"y" forElement:Element];
+		
+		NSString *localita = @"";
+    TBXMLElement *loc = [TBXML childElementNamed:@"loc" parentElement:Element];
+		if ( loc ) localita = [TBXML textForElement:loc];
+
+    NSString *descrizione = @"";
+		TBXMLElement *dsc = [TBXML childElementNamed:@"dsc" parentElement:Element];
+		if ( dsc ) descrizione = [TBXML textForElement:dsc];
+    
+		TBXMLElement *draw_at = [TBXML childElementNamed:@"draw_at" parentElement:Element];
+		if (!draw_at)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<draw_at>: node draw_at is not preset" userInfo:nil];
+		NSString *dx = [TBXML  valueOfAttributeNamed:@"x" forElement:draw_at];
+		NSString *dy = [TBXML  valueOfAttributeNamed:@"y" forElement:draw_at];
+		
+		[Item addWayPoint:[x floatValue] addY:[y floatValue] addLoc:localita addDsc:descrizione addDrwX:[dx floatValue] addDrwY:[dy floatValue]];
+		Element = [TBXML nextSiblingNamed:@"way_point" searchFromElement:Element];
+	}
+}
+
++ (void) SetRegions:(PGRouteResults*)Item intoXmlElement:(TBXMLElement*)Element
+{
+	Item.RouteBound = PGBoundMake([[TBXML valueOfAttributeNamed:@"max_y" forElement:Element] floatValue],
+																[[TBXML valueOfAttributeNamed:@"min_x" forElement:Element] floatValue],
+																[[TBXML valueOfAttributeNamed:@"min_y" forElement:Element] floatValue],
+																[[TBXML valueOfAttributeNamed:@"max_x" forElement:Element] floatValue]);
+	
+	TBXMLElement *region = [TBXML childElementNamed:@"region" parentElement:Element];
+	if (!region)
+		@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<region>: nodes region is not preset" userInfo:nil];
+	
+	while (region) {
+		[Item addRegion:[[TBXML valueOfAttributeNamed:@"max_y" forElement:region] floatValue] 
+						addLeft:[[TBXML valueOfAttributeNamed:@"min_x" forElement:region] floatValue] 
+					addBottom:[[TBXML valueOfAttributeNamed:@"min_y" forElement:region] floatValue] 
+					 addRight:[[TBXML valueOfAttributeNamed:@"max_x" forElement:region] floatValue]];
+		
+		region = [TBXML nextSiblingNamed:@"region" searchFromElement:region];
+	}
+}
+
++ (void) SetCoords:(PGRouteResults*)Item withPFR:(TBXMLElement*)PFR intoXmlElement:(TBXMLElement*)Element
+{
+	NSArray *chunks = [[TBXML textForElement:Element] componentsSeparatedByString: @","];
+	
+	NSMutableArray * temp = nil;
+	
+	// PFR corrisponde al numero di punti per regione, ma in questa fase stiamo lavorando sulla lista di cordinate
+	// presenti nel XML, che non sono ancora accoppiate. Per poter quindi capire quando il contatore con cui 
+	// si scorre la lista è arrivato al numero di punti PFR, devo moltiplicare quest'ultimo valore per due
+	int pointsRegion = [[TBXML textForElement:PFR] intValue] * 2;
+	
+	for (int i = 0; i < [chunks count] - 1; i += 2)
+	{
+		if ( i % pointsRegion == 0)
+		{
+			if (temp)	[temp release];
+			temp = [[NSMutableArray alloc] init];
+			PGRegion * r = [Item.RegionBounds objectAtIndex:(i / pointsRegion)];
+			r.Coords = temp;
+		}		
+    [temp addObject:[NSValue valueWithCGPoint:CGPointMake([[chunks objectAtIndex:i] floatValue], [[chunks objectAtIndex:i+1] floatValue])]];
+	}	
+	if (temp) [temp release];
+}
+
++ (void) SetDistanceAndSteps:(PGRouteResults*)Item withPFR:(TBXMLElement*)PFR intoXmlElement:(TBXMLElement*)Element
+{
+	// TOTAL DISTANCE
+	float totalDistance = [[TBXML  valueOfAttributeNamed:@"td" forElement:Element] floatValue];
+	Item.TotalLength = totalDistance / CONVERSION_ROUTE_LENGTH;	// td is in meters
+	
+  // TOTAL TIME
+	int totalTime = [[TBXML  valueOfAttributeNamed:@"tt" forElement:Element] intValue];
+	Item.TotalTime = totalTime;	// td is in seconds  
+  
+	NSString *coordsonly = [TBXML  valueOfAttributeNamed:@"coordsonly" forElement:Element];
+	
+	if ([coordsonly isEqualToString:@"no"]) {
+		TBXMLElement *rleg = [TBXML childElementNamed:@"rleg" parentElement:Element];
+		if (!rleg)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<rleg>: node rleg is not preset" userInfo:nil];
+		
+		TBXMLElement *stepsEnds = [TBXML childElementNamed:@"steps_ends" parentElement:rleg];
+		if (!stepsEnds)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<stepEnds>: node stepEnds is not preset" userInfo:nil];
+		
+		NSArray *chunks = [[TBXML textForElement:stepsEnds] componentsSeparatedByString: @","];
+		
+		TBXMLElement *rstep = [TBXML childElementNamed:@"rstep" parentElement:rleg];
+    NSString *suca;
+    
+		if (!rstep)
+			@throw [NSException exceptionWithName:@"PGParser::routingParser" reason:@"<rstep>: node rstep is not preset" userInfo:nil];
+		
+		// Ogni step deve fare riferimento alla coordinata steps_ends dello step precedente. 
+		// Quindi al primo step (START) passo come LastCoord il valore 0, in modo tale che la coordinalta sia
+		// poi assegnata a (0,0)
+		
+    suca = [TBXML textForElement:rstep];
+    //NSLog(@"[0] XP: %@", suca);
+    
+		[Item addStep:suca
+			 addCountry:[TBXML valueOfAttributeNamed:@"country" forElement:rstep] 
+				 addCross:[[TBXML valueOfAttributeNamed:@"cross" forElement:rstep] intValue] 
+			addDestExit:[TBXML valueOfAttributeNamed:@"dest_exit" forElement:rstep] 
+				addDestSt:[TBXML valueOfAttributeNamed:@"dest_st" forElement:rstep] 
+					 addDir:[[TBXML valueOfAttributeNamed:@"dir" forElement:rstep] intValue] 
+					 addDsc:[TBXML valueOfAttributeNamed:@"dsc" forElement:rstep] 
+					addEcop:[[TBXML valueOfAttributeNamed:@"ecop" forElement:rstep] boolValue]
+					addExit:[TBXML valueOfAttributeNamed:@"exit" forElement:rstep] 
+						addId:[[TBXML valueOfAttributeNamed:@"id" forElement:rstep] intValue]
+					 addLoc:[TBXML valueOfAttributeNamed:@"loc" forElement:rstep] 
+					addPdes:[[TBXML valueOfAttributeNamed:@"pdes" forElement:rstep] intValue]
+						addPt:[[TBXML valueOfAttributeNamed:@"pt" forElement:rstep] intValue] 
+				addRbExit:[[TBXML valueOfAttributeNamed:@"rb_exit" forElement:rstep] intValue] 
+				 addState:[TBXML valueOfAttributeNamed:@"state" forElement:rstep] 
+				 addStlev:[[TBXML valueOfAttributeNamed:@"stlev" forElement:rstep] boolValue] 
+			 addThrough:[[TBXML valueOfAttributeNamed:@"through" forElement:rstep] boolValue] 
+					addToll:[[TBXML valueOfAttributeNamed:@"tool" forElement:rstep] boolValue] 
+				addTunnel:[[TBXML valueOfAttributeNamed:@"tunnel" forElement:rstep] boolValue] 
+					addTurn:[[TBXML valueOfAttributeNamed:@"turn" forElement:rstep] intValue]
+						 addX:[[TBXML valueOfAttributeNamed:@"x" forElement:rstep] floatValue] 
+						 addY:[[TBXML valueOfAttributeNamed:@"y" forElement:rstep] floatValue]
+		 addLastCoord:-1
+					withPFR:[[TBXML textForElement:PFR] intValue]
+		 ];
+    
+		rstep = [TBXML nextSiblingNamed:@"rstep" searchFromElement:rstep];
+		int i = 0;
+    
+    //NSArray *xp = PerformXMLXPathQuery([XmlDoc dataUsingEncoding:NSStringEncodingConversionAllowLossy], @"//rstep/text()");
+    
+		while (rstep)
+		{
+      
+      suca = [TBXML textForElement:rstep];
+      if ([suca isEqualToString:@""]) {
+          //suca = [xp objectAtIndex:i+1];
+          //suca = [suca valueForKey:@"nodeContent"];
+        suca = @"NOTAG";
+      }
+      
+			[Item addStep:suca 
+				 addCountry:[TBXML valueOfAttributeNamed:@"country" forElement:rstep] 
+					 addCross:[[TBXML valueOfAttributeNamed:@"cross" forElement:rstep] intValue] 
+				addDestExit:[TBXML valueOfAttributeNamed:@"dest_exit" forElement:rstep] 
+					addDestSt:[TBXML valueOfAttributeNamed:@"dest_st" forElement:rstep] 
+						 addDir:[[TBXML valueOfAttributeNamed:@"dir" forElement:rstep] intValue] 
+						 addDsc:[TBXML valueOfAttributeNamed:@"dsc" forElement:rstep] 
+						addEcop:[[TBXML valueOfAttributeNamed:@"ecop" forElement:rstep] boolValue]
+						addExit:[TBXML valueOfAttributeNamed:@"exit" forElement:rstep] 
+							addId:[[TBXML valueOfAttributeNamed:@"id" forElement:rstep] intValue]
+						 addLoc:[TBXML valueOfAttributeNamed:@"loc" forElement:rstep] 
+						addPdes:[[TBXML valueOfAttributeNamed:@"pdes" forElement:rstep] intValue]
+							addPt:[[TBXML valueOfAttributeNamed:@"pt" forElement:rstep] intValue] 
+					addRbExit:[[TBXML valueOfAttributeNamed:@"rb_exit" forElement:rstep] intValue] 
+					 addState:[TBXML valueOfAttributeNamed:@"state" forElement:rstep] 
+					 addStlev:[[TBXML valueOfAttributeNamed:@"stlev" forElement:rstep] boolValue] 
+				 addThrough:[[TBXML valueOfAttributeNamed:@"through" forElement:rstep] boolValue] 
+						addToll:[[TBXML valueOfAttributeNamed:@"tool" forElement:rstep] boolValue] 
+					addTunnel:[[TBXML valueOfAttributeNamed:@"tunnel" forElement:rstep] boolValue] 
+						addTurn:[[TBXML valueOfAttributeNamed:@"turn" forElement:rstep] intValue]
+							 addX:[[TBXML valueOfAttributeNamed:@"x" forElement:rstep] floatValue] 
+							 addY:[[TBXML valueOfAttributeNamed:@"y" forElement:rstep] floatValue]
+			 addLastCoord:[[chunks objectAtIndex:i] intValue]
+						withPFR:[[TBXML textForElement:PFR] intValue]
+			 ];
+      
+      i++;
+      
+      rstep = [TBXML nextSiblingNamed:@"rstep" searchFromElement:rstep];
+		}
+	}
+	
+}
+
+#pragma mark -
+#pragma mark internal methods
+
+
+@end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

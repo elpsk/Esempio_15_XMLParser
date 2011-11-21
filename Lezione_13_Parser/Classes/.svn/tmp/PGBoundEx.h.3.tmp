@@ -1,0 +1,47 @@
+//
+//  PGBound.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 30/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "PGParams.h"
+
+
+/**
+ * Wrapper della struttura Closer
+ */
+typedef CloserBound PGBound;
+NS_INLINE PGBound PGBoundMake(float top, float left, float bottom, float right)
+{
+  PGBound pgb;
+	pgb.top    = top;
+  pgb.left   = left;
+  pgb.bottom = bottom;
+  pgb.right  = right;
+  return pgb;
+}
+
+@interface PGBoundEx : NSObject {
+  float m_Top;
+  float m_Left;
+  float m_Bottom;
+  float m_Right;
+}
+
+@property (assign) float Top;
+@property (assign) float Left;
+@property (assign) float Bottom;
+@property (assign) float Right;
+
+- (id) InitWithBound:(PGBound)Bound;
+- (void) Increase:(float)Value;
+- (BOOL) Excluded:(PGBound)Bound;
+- (BOOL) Included:(PGBound)Bound;
+
++ (PGBound) PgBoundFromCGRect:(CGRect)Bound;
++ (BOOL) CheckBound:(PGBound)Bound;
+
+@end

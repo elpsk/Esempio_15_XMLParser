@@ -1,0 +1,205 @@
+//
+//  PGEngineTableView.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 05/10/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGEngineTableView.h"
+#import "PGDevice.h"
+
+
+const int TagWaiting = 99;
+
+@interface PGEngineTableView (Internals)
+  - (void) SetEnginePage:(int)Page andWhat:(NSString*)Wath andWhere:(NSString*)Where;
+  - (void) RequestToEngine;
+@end
+
+
+@implementation PGEngineTableView
+
+
+#pragma mark Initialization
+
+- (void)dealloc {
+  if ( _Results ) [_Results release];
+  if ( _Engine  ) [_Engine  release];
+
+  [super dealloc];
+}
+
+- (void) InitReciver:(id <PGEngineTableViewDelegate>)Receiver andParams:(PGParams*)Params {
+
+  self.delegate = self;
+  self.dataSource = self;
+
+  self.backgroundColor = [UIColor whiteColor];
+
+  self.bounces = YES;
+  self.alwaysBounceVertical = YES;
+  self.showsVerticalScrollIndicator = YES;
+
+  [self setClipsToBounds:YES];
+  
+  self.autoresizingMask = UIViewAutoresizingFlexibleTopMargin  | UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleBottomMargin |
+  UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleWidth  | UIViewAutoresizingFlexibleRightMargin;
+  
+  _Receiver = Receiver;
+
+  _Results = [[NSMutableArray alloc] init];
+  
+  _Engine = [[PGEngine alloc] init];
+  _Engine.Delegate = self;
+  _Engine.Params = Params;
+}
+
+
+#pragma mark PGEngine
+
+- (void) SetEngineServer:(PGEngineServer)Server andFunction:(PGEngineFunct)Function andWhat:(NSString*)What andWhere:(NSString*)Where {
+
+  if ( [_Results count] > 0 ) [_Results removeAllObjects];
+  
+  _Engine.Server = Server;
+  _Engine.Funct  = Function;
+  _Engine.What   = What;
+  _Engine.Where  = Where;
+  
+  [self RequestToEngine];
+}
+
+- (void) RequestToEngine {
+  NSString *opt = [NSString stringWithFormat:@"sortby=name&pagesize=%d&page=%d", _Engine.Params.EnginePageSize, (int)([_Results count] / _Engine.Params.EnginePageSize) + 1];  
+  [_Engine Request:opt];
+}
+
+
+#pragma mark PGEngine Delegate
+
+- (void) ItemsDidFinishLoading:(PGEngine *)Engine withResults:(NSArray *)Results {
+  [_Results addObjectsFromArray:Results];
+  [self reloadData];
+}
+
+
+#pragma mark TableView Delegate
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+  if ( _Receiver && [_Receiver respondsToSelector:@selector(tableView:heightForRowAtIndexPath:)] )
+    return [_Receiver tableView:tableView heightForRowAtIndexPath:indexPath];
+  return tableView.rowHeight;
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+	return 1;
+}
+
+- (NSInteger) tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+  if ( !_Results ) return 0;
+  return [_Results count];
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+  
+  if ( !_Results || [_Results count] == 0 || indexPath.row >= [_Results count] ) {
+/*    
+    if ( tableView.tableFooterView ) {
+      UIActivityIndicatorView *aiv = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+      aiv.center = CGPointMake(tableView.tableFooterView.frame.size.width / 2, tableView.tableFooterView.frame.size.height / 2);
+      [aiv startAnimating];
+      
+      [tableView.tableFooterView addSubview:aiv];
+      
+      [aiv release];
+    }
+*/    
+    return nil;
+  }
+
+  static NSString *identifier = @"EngineCell";
+
+  UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
+
+  if ( _Receiver && [_Receiver respondsToSelector:@selector(SetEngineCustomCell:forTableView:cellForRowAtIndexPath:)] ) {
+    cell = [_Receiver SetEngineCustomCell:[_Results objectAtIndex:indexPath.row] forTableView:tableView cellForRowAtIndexPath:indexPath];
+  } else {
+    if ( !cell ) {
+      cell = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:identifier] autorelease];
+      cell.textLabel.font = [UIFont fontWithName:@"Helvetica" size:14];
+      cell.detailTextLabel.font = [UIFont fontWithName:@"Helvetica" size:10];
+    }
+  
+    PGEngineItem *item = [_Results objectAtIndex:indexPath.row];
+  
+    cell.textLabel.text = item.Name;
+    cell.detailTextLabel.text = item.Address;
+  }
+
+  if ( (indexPath.row + 10) == [_Results count] ) [self RequestToEngine];
+  
+  UIView *v = [cell viewWithTag:TagWaiting];
+  if ( v ) [v removeFromSuperview];
+  
+  if ( (indexPath.row + 2) == [_Results count] ) {
+    UIView *v = [[UIView alloc] initWithFrame:CGRectMake(0, cell.frame.size.height, cell.frame.size.width, cell.frame.size.height)];
+    v.backgroundColor = cell.backgroundColor;
+    v.tag = TagWaiting;
+
+    UIActivityIndicatorView *aiv = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+    aiv.center = CGPointMake(v.frame.size.width / 2, v.frame.size.height / 2);
+    [aiv startAnimating];
+    
+    [v addSubview:aiv];
+    [cell addSubview:v];
+    
+    [aiv release];
+    [v release];
+  }
+
+  return cell;
+}
+
+- (void) tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+
+  if ( _Receiver && [_Receiver respondsToSelector:@selector(SelectedEngineItem:)] )
+    [_Receiver SelectedEngineItem:[_Results objectAtIndex:indexPath.row]];
+}
+
+@end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

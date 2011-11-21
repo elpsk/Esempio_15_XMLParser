@@ -1,0 +1,27 @@
+//
+//  PGSpaceBound.m
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 28/03/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGRegion.h"
+
+
+@implementation PGRegion
+
+@synthesize Coords	= m_Coords;
+@synthesize Bound		= m_Bound;
+
+- (void) dealloc
+{
+	if (m_Coords) 
+	{
+		[m_Coords release];
+		m_Coords = nil;
+	}
+
+	[super dealloc];
+}
+@end

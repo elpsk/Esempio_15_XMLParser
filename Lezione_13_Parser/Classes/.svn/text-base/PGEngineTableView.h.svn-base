@@ -1,0 +1,36 @@
+//
+//  PGEngineTableView.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 05/10/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "PGEngine.h"
+#import "PGEngineItem.h"
+
+
+@class PGEngineTableView;
+
+
+@protocol PGEngineTableViewDelegate <NSObject>
+  @optional
+  - (void) SelectedEngineItem:(PGEngineItem*)Item;
+
+  - (UITableViewCell*) SetEngineCustomCell:(PGEngineItem*)items forTableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath;
+  - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath;
+
+@end
+
+
+@interface PGEngineTableView : UITableView <UITableViewDelegate, UITableViewDataSource, PGEngineDelegate> {
+  id <PGEngineTableViewDelegate> _Receiver;
+  NSMutableArray *_Results;
+  PGEngine *_Engine;
+}
+
+- (void) InitReciver:(id <PGEngineTableViewDelegate>)Receiver andParams:(PGParams*)Params;
+- (void) SetEngineServer:(PGEngineServer)Server andFunction:(PGEngineFunct)Function andWhat:(NSString*)What andWhere:(NSString*)Where;
+
+@end

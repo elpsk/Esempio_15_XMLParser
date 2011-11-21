@@ -1,0 +1,23 @@
+//
+//  PGCompassView.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 23/06/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+
+enum {
+  Label = 0,
+  View
+};
+
+@interface PGCompass : UIImageView {
+}
+
+- (id)initWithPosition:(CGPoint)Position;
+- (void) setAngle:(float)degrees;
+
+@end

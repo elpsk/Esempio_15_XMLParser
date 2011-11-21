@@ -1,0 +1,60 @@
+//
+//  PGCompassView.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 17/06/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGCompassView.h"
+
+
+@implementation PGCompassView
+
+- (id)initWithFrame:(CGRect)frame {
+  
+  self = [super initWithFrame:frame];
+  if (self) {
+
+    self.backgroundColor = [UIColor clearColor];
+    self.layer.anchorPoint = CGPointMake(0.5, 0.5);
+
+    UILabel *PosLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
+    PosLabel.contentMode = UIViewContentModeTop;
+    [PosLabel setTextAlignment:UITextAlignmentCenter];
+    [PosLabel setFont:[UIFont fontWithName:@"Verdana-Bold" size:16]];
+    [PosLabel setTextColor: [UIColor blackColor]];
+    [PosLabel setBackgroundColor:[UIColor clearColor]];
+    PosLabel.tag = Nord;
+    [PosLabel setText: @"N"];
+    [self addSubview:PosLabel];
+    [PosLabel release];
+  }
+  return self;
+}
+
+- (void) layoutSubviews {
+  UILabel *label = (UILabel*)[self viewWithTag:Nord];
+  [label setFrame:CGRectMake(0, 0, self.frame.size.width, [label.text sizeWithFont:label.font].height)];
+}
+
+- (void) setAngle:(float)degrees {
+  self.transform = CGAffineTransformMakeRotation(degrees / 180.0 * M_PI);
+}
+
+- (void)dealloc {
+  [super dealloc];
+}
+
+
+@end
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,203 @@
+//
+//  PGTextField.m
+//  PGTextField
+//
+//  Created by Gianluca Folloni on 31/08/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import "PGTextField.h"
+#import "PGDevice.h"
+#import "PGTableViewCell.h"
+
+
+@implementation PGOpaqueView
+
+- (id) initWithFrame:(CGRect)frame andDelegate:(id)Delegate {
+  
+  self = [super initWithFrame:frame];
+  
+  if ( self ) {
+    _Delegate = Delegate;
+    
+    self.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0];
+  }
+  
+  return self;
+}
+
+- (void) touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
+  
+  if ( [touches count] == 0 ) return;
+  
+  CGPoint point = [[touches anyObject] locationInView:self];
+  
+  if ( _Delegate && [_Delegate respondsToSelector:@selector(OpaqueViewClicked:)] )
+    [_Delegate OpaqueViewClicked:point];
+}
+
+@end
+
+
+@implementation PGTextFieldCtrl
+
+- (id) initWithDelegate:(id)Delegate {
+  self = [super init];
+  if ( self ) _Delegate = Delegate;
+  return self;
+}
+
+-(void) textFieldDidBeginEditing:(UITextField*)textField {
+  if ( _Delegate && [_Delegate respondsToSelector:@selector(textFieldDidBeginEditing:)] )
+    [_Delegate textFieldDidBeginEditing:textField];
+}
+
+- (void) textFieldDidEndEditing:(UITextField*)textField {
+  if ( _Delegate && [_Delegate respondsToSelector:@selector(textFieldDidEndEditing:)] )
+    [_Delegate textFieldDidEndEditing:textField];
+}
+
+- (BOOL) textField:(UITextField*)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString*)string {
+  if ( _Delegate && [_Delegate respondsToSelector:@selector(textField:shouldChangeCharactersInRange:replacementString:)] )
+    [_Delegate textField:textField shouldChangeCharactersInRange:range replacementString:string];
+  return YES;
+}
+
+- (BOOL) textFieldShouldClear:(UITextField *)textField {
+  if ( _Delegate && [_Delegate respondsToSelector:@selector(textFieldShouldClear:)] )
+    [_Delegate textFieldShouldClear:textField];
+  return YES;
+}
+
+- (BOOL) textFieldShouldReturn:(UITextField *)textField {
+  if ( _Delegate && [_Delegate respondsToSelector:@selector(textFieldShouldReturn:)] )
+    [_Delegate textFieldShouldReturn:textField];
+  return YES;
+}
+
+@end
+
+
+@interface PGTextField (Internals)
+@end
+
+
+@implementation PGTextField
+
+
+#pragma mark Initialize
+
+- (void) InitTextField:(PGParams*)Params withReceiver:(UIViewController*)Receiver {
+  
+  _Controller = [[PGTextFieldCtrl alloc] initWithDelegate:self];
+  
+  self.delegate = _Controller;
+  self.clearButtonMode = UITextFieldViewModeWhileEditing;
+  self.autocorrectionType = UITextAutocorrectionTypeNo;
+
+  _Receiver = Receiver;
+
+  _TableView = [[PGTableView alloc] initWithFrame:CGRectNull andParams:Params andReciver:self];
+  _TableView.hidden = YES;
+  _TableView.layer.cornerRadius = 5;
+
+  _OpaqueView = [[PGOpaqueView alloc] initWithFrame:CGRectNull andDelegate:self];
+  _OpaqueView.hidden = YES;
+
+  [_OpaqueView addSubview:_TableView];
+  [_OpaqueView bringSubviewToFront:_TableView];
+
+  [_Receiver.view addSubview:_OpaqueView];
+  [_Receiver.view bringSubviewToFront:_OpaqueView];
+
+  [self Update];
+}
+
+- (void)dealloc {
+  if ( _OpaqueView  ) [_OpaqueView  release];
+  if ( _TableView   ) [_TableView   release];
+  if ( _Controller  ) [_Controller  release];
+  
+  [super dealloc];
+}
+
+- (void) Update {
+  
+  CGSize s = [PGDevice KeyboardSize:_Receiver.interfaceOrientation];
+  
+  _OpaqueView.frame = CGRectMake(0, 0, s.width, abs(_Receiver.view.bounds.size.height - s.height));
+
+  int nrows = (_Receiver.view.bounds.size.height - s.height - self.frame.origin.y - self.frame.size.height) / CellHeight;
+  _TableView.MaxHeight = CellHeight * nrows;
+
+  CGPoint origin = [self.superview convertPoint:self.frame.origin toView:_OpaqueView];
+
+  _TableView.frame = CGRectMake(origin.x + (self.leftView ? self.leftView.frame.size.width : 0),
+                                origin.y + self.frame.size.height,
+                                self.frame.size.width - (self.leftView ? self.leftView.frame.size.width : 0) - (self.rightView ? self.rightView.frame.size.width : 0),
+                                _TableView.MaxHeight);
+}
+
+
+#pragma mark PGTextFieldCtrl Event
+
+- (void) textFieldDidBeginEditing:(UITextField *)textField {
+  _OpaqueView.hidden = NO;
+}
+
+- (void) textFieldDidEndEditing:(UITextField *)textField {
+  _OpaqueView.hidden = _TableView.hidden= YES;
+}
+
+- (BOOL) textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
+
+  NSString *str = [textField.text stringByReplacingCharactersInRange:range withString:string];
+
+  [_TableView Autocomplete:str];
+
+  return YES;
+}
+
+- (BOOL) textFieldShouldClear:(UITextField *)textField {
+  _TableView.hidden= YES;
+  return YES;
+}
+
+- (BOOL) textFieldShouldReturn:(UITextField *)textField {
+  [self resignFirstResponder];
+  
+  [self AutocompleteChoice:self.text withTag:_TableView.tag];
+  
+  return YES;
+}
+
+- (void) AutocompleteChoice:(NSString *)choice withTag:(int)tag {
+  self.text = choice;
+  
+  _TableView.hidden = YES;
+  
+  if ( _Receiver && [_Receiver conformsToProtocol:@protocol(PGTextFieldDelegate)] && [_Receiver respondsToSelector:@selector(Autocomplete:andChoice:)] )
+    [_Receiver performSelector:@selector(Autocomplete:andChoice:) withObject:self withObject:choice];
+}
+
+- (void) OpaqueViewClicked:(CGPoint)Point {
+  
+  CGPoint p = [_OpaqueView convertPoint:Point toView:self];
+  
+  UIView *v = [self hitTest:p withEvent:nil];
+  
+  if ( v == self || v.superview == self ) {
+    if ( [v isKindOfClass:[UIControl class]] ) {
+      UIControl *c = (UIControl*)v;
+      [c sendActionsForControlEvents:UIControlEventAllEvents];
+    }
+    return;
+  }
+  
+  [self resignFirstResponder];
+  
+  if ( _Receiver && [_Receiver conformsToProtocol:@protocol(PGTextFieldDelegate)] && [_Receiver respondsToSelector:@selector(OpaqueViewClicked:andTextField:)] )
+    [_Receiver performSelector:@selector(OpaqueViewClicked:andTextField:) withObject:[NSValue valueWithCGPoint:Point] withObject:self];
+}
+
+@end

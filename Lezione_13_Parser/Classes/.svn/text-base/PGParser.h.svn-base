@@ -1,0 +1,46 @@
+//
+//  Parser.h
+//  tc
+//
+//  Created by Gianluca Folloni on 03/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+#import "Costanti.h"
+#import "PGRouteResults.h"
+#import "PGParams.h"
+#import "PGGeoResult.h"
+#import "PGGeoStatus.h"
+#import "TBXML.h"
+
+
+@interface PGParser : NSObject {
+}
+
++ (void) routingParser:(PGRouteResults *)RouteResults inputXML:(NSString*)xml;
+
++ (NSMutableArray*) LbsParser:(NSString*)Query withConfig:(PGParams*)Config;
+
++ (PGGeoOutcodeType) LbsParser:(NSString*)Xml withResult:(NSMutableArray*)Result withGeoStatus:(PGGeoStatus*)Status;
++ (PGGeoOutcodeType) LbsParser:(NSString *)Query withConfig:(PGParams *)Config withResult:(NSMutableArray*)Result withGeoStatus:(PGGeoStatus*)Status;
+
++ (void) scanAddrCodesTag:(TBXMLElement *)root regioneId:(int *)regioneId provinciaId:(int *)provinciaId
+                 comuneId:(int *)comuneId frazioneId:(int *)frazioneId zonaId:(int *)zonaId;
+
++ (void) ReverseParser:(PGGeoResult*)Geo inputXml:(NSString*)Xml;
+
++ (void) MapConfigParser:(PGParams*)Params inputXml:(NSString*)Xml;
+
++ (void) MapBoundsParser:(NSMutableArray*)Bounds inputXml:(NSString*)Xml;
+
++ (void) MapServerParser:(NSMutableArray*)Servers inputXml:(NSString*)Xml;
+
++ (void) MapImagesParser:(NSMutableArray*)Images inputXml:(NSString*)Xml;
+
++ (NSArray*) AriaMeteoParser:(int)AriaMeteo withData:(NSString*)Xml;
+
++ (int) EngineParser:(NSMutableArray*)Items inputXml:(NSString*)Xml;
+
+@end

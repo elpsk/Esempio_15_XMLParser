@@ -1,0 +1,33 @@
+//
+//  PGCallout.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 16/11/2010.
+//  Copyright 2010 Cutaway SRL. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+
+@interface PGCallout : UIView {
+  UIView      *_Point;
+  UIView      *_Fumetto;
+  UIImageView *_Puntatore;
+  UIButton    *_Button;
+  UILabel     *_Title;
+  UILabel     *_SubTitle;
+  
+  BOOL _IsCustom;
+}
+
+@property (readonly) UILabel *Title;
+@property (readonly) UILabel *SubTitle;
+
+- (id) initWithView:(UIView*)CView andArrow:(UIImage*)arrow toPoint:(id)Point;
+- (id) initWithText:(NSString*)Text withTextBtm:(NSString*)TextBtm toPoint:(id)Point withAction:(SEL)Selector;
+
+- (CGPoint) UpdatePosition:(UIView*)Map;
+- (BOOL) ButtonClicked:(CGPoint)Touch;
+- (void) ForceHiding:(BOOL)Hide;
+
+@end

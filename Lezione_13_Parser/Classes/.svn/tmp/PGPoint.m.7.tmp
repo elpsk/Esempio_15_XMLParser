@@ -1,0 +1,395 @@
+//
+//  PGPoint.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 08/10/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import "PGPoint.h"
+#import "PGMap.h"
+#import "PGFormule.h"
+#import "PGDevice.h"
+#import "PGConfig.h"
+
+/**
+ *  Internals Methods.
+ */
+@interface PGPoint (Internals)
+  - (UIImage*) GetPallino:(PGPointType)Type;
+  - (CGPoint) GetAncor:(PGPointType)Type;
+  - (void) ProtocolManager:(SEL)selector andObject:(id)Obj;
+  - (void) handleCalloutClick:(UIControl*)control;
+@end
+
+/**
+ * Classe PGPoint per disegnare e aggiungere un pallino sulla mappa
+ */
+@implementation PGPoint
+
+@synthesize delegate=_Delegate, Position=_Position;
+
+- (CGPoint) GetAncor:(PGPointType)Type {
+  switch ( Type ) {
+    case PGPointTypeLocation: return CGPointMake(0.5, 0.5);
+    default: return CGPointMake(0.5, 1);
+  }
+}
+
+- (UIImage*) GetPallino:(PGPointType)Type {
+	@try {
+		switch( Type ) {
+			case PGPointTypeTransparent: {
+        UIImage *pgpointtrasnparent = nil;
+        if ( !pgpointtrasnparent ) pgpointtrasnparent = [UIImage imageNamed:@"PgLib.bundle/PGPointTransparent.png"];
+				return pgpointtrasnparent;
+      }
+			case PGPointTypeYellow: {
+        UIImage *pgpointyellow = nil;
+        if ( !pgpointyellow ) pgpointyellow = [UIImage imageNamed:@"PgLib.bundle/mk_pallino.png"];
+				return pgpointyellow;
+      }
+			case PGPointTypeBlue: {
+        UIImage *pgpointblue = nil;
+        if ( !pgpointblue ) pgpointblue = [UIImage imageNamed:@"PgLib.bundle/mk_pallino_blue.png"];
+				return pgpointblue;
+      }
+			case PGPointTypeManStatic: {
+        UIImage *pgpointmstatic = nil;
+        if ( !pgpointmstatic ) pgpointmstatic = [UIImage imageNamed:@"PgLib.bundle/iphone_static.png"];
+				return pgpointmstatic;
+      }
+			case PGPointTypeManMoving: {
+        UIImage *pgpointmmove = nil;
+        if ( !pgpointmmove ) pgpointmmove = [UIImage imageNamed:@"PgLib.bundle/iphone_moving.png"];
+				return pgpointmmove;
+      }
+			case PGPointTypeCenter: {
+        UIImage *pgpointcentro = nil;
+        if ( !pgpointcentro ) pgpointcentro = [UIImage imageNamed:@"PgLib.bundle/iphone_centro.png"];
+				return pgpointcentro;
+      }
+			case PGPointTypeLocation: {
+        UIImage *pgpointlocation = nil;
+        if ( !pgpointlocation ) pgpointlocation = [UIImage imageNamed:@"PgLib.bundle/pin.png"];
+				return pgpointlocation;
+      }
+			case PGPointTypeCompass: {
+        UIImage *pgpointcompass = nil;
+        if ( !pgpointcompass ) pgpointcompass = [UIImage imageNamed:@"PgLib.bundle/CompassPoint.png"];
+				return pgpointcompass;
+      }
+      case PGPointTypeCanvas: {
+				UIImage *pgpointcanvas = nil;
+        if ( !pgpointcanvas ) pgpointcanvas = [UIImage imageNamed:@"PgLib.bundle/mk_canvas.png"];
+				return pgpointcanvas;
+      }
+      case PGPointTypeOpec: {
+				UIImage *pgpointopec = nil;
+        if ( !pgpointopec ) pgpointopec = [UIImage imageNamed:@"PgLib.bundle/mk_opec.png"];
+				return pgpointopec;
+      }
+      case PGPointTypeIpadYellow: {
+				UIImage *pgpointipady = nil;
+        if ( !pgpointipady ) pgpointipady = [UIImage imageNamed:@"PgLib.bundle/YellowPagesMarker.png"];
+				return pgpointipady;
+      }
+      case PGPointTypeIpadWhite: {
+				UIImage *pgpointipadw = nil;
+        if ( !pgpointipadw ) pgpointipadw = [UIImage imageNamed:@"PgLib.bundle/WhitePagesMarker.png"];
+				return pgpointipadw;
+      }
+      case PGPointTypePlaceholder: {
+				UIImage *pgpointplace = nil;
+        if ( !pgpointplace ) pgpointplace = [UIImage imageNamed:@"PgLib.bundle/WhitePagesMarker.png"];
+				return pgpointplace;
+      }
+        
+      // atm
+      case PGPointTypeATMBus: {
+				UIImage *pgpointbus = nil;
+        if ( !pgpointbus ) 
+          //pgpointbus = TEST_ROUTE_DATA ? [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:@"http://img.tuttocitta.it/tcolnew/img/21bus.png"]]]
+          //  :
+          pgpointbus = [UIImage imageNamed:@"PgLib.bundle/21bus.png"];
+				return pgpointbus;
+      }
+      case PGPointTypeATMMetro: {
+				UIImage *pgpointmetro = nil;
+        if ( !pgpointmetro ) 
+        //pgpointmetro = TEST_ROUTE_DATA ? [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:@"http://img.tuttocitta.it/tcolnew/img/21metro.png"]]]
+        //  :
+        pgpointmetro = [UIImage imageNamed:@"PgLib.bundle/21metro.png"];
+				return pgpointmetro;
+      }
+      case PGPointTypeATMPiedi: {
+				UIImage *pgpointpiedi = nil;
+        if ( !pgpointpiedi ) 
+          //pgpointpiedi = TEST_ROUTE_DATA ? [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:@"http://img.tuttocitta.it/tcolnew/img/21piedi.png"]]]
+          //  :
+        pgpointpiedi = [UIImage imageNamed:@"PgLib.bundle/21piedi.png"];  
+				return pgpointpiedi;
+      }
+      case PGPointTypeATMTram: {
+				UIImage *pgpointtram = nil;
+        if ( !pgpointtram ) 
+          //pgpointtram = TEST_ROUTE_DATA ? [UIImage imageWithData:[NSData dataWithContentsOfURL:[NSURL URLWithString:@"http://img.tuttocitta.it/tcolnew/img/21tram.png"]]]
+          //  :
+          pgpointtram = [UIImage imageNamed:@"PgLib.bundle/21tram.png"];
+				return pgpointtram;
+      }
+        
+      case PGPointTypeCustom: return nil;
+
+      case PGPointTypeDefault:
+			default: {
+				UIImage *pgpointdef = nil;
+        if ( !pgpointdef ) pgpointdef = [UIImage imageNamed:@"PgLib.bundle/mk_pallino.png"];
+				return pgpointdef;
+      }
+		}
+	}
+	@catch (NSException * e) {
+		//NSLog(@"PGPoint failed to load.");
+	}
+  return nil;
+}
+
+- (id) initWith:(CLLocationCoordinate2D)coords 
+      pointType:(PGPointType)t 
+    isDraggable:(BOOL)drag 
+            pos:(CGPoint)p 
+         inView:(UIView*)v 
+    isTouchable:(BOOL)touchEnabled
+{
+  self = [super init];
+
+  if ( self ) {
+
+    _Draggable = drag;
+    _Touchable = touchEnabled;
+    
+    _IsLongPress = NO;
+    
+    _Map = (PGMap*)v;
+    _Position.latitude  = coords.latitude;
+    _Position.longitude = coords.longitude;
+
+    UIImage *img = [self GetPallino:t];
+    if ( img ) [self setImage:img withAnchor:[self GetAncor:t]];
+
+    _Receiver = _Object = nil;
+    
+    _Callout = nil;
+    
+    _TimerLongPress = nil;
+  }
+  
+  return self;
+}
+
+- (id) initWith:(CLLocationCoordinate2D)Coords pointType:(PGPointType)Type inView:(UIView*)v isTouchable:(BOOL)touchEnabled {
+	return [self initWith:Coords pointType:Type isDraggable:NO pos:CGPointMake(0, 0) inView:v isTouchable:touchEnabled];
+}
+
+- (void) setImage:(UIImage*)Image withAnchor:(CGPoint)Point {
+  self.layer.anchorPoint = Point;
+  
+  self.frame = CGRectMake(0,0, Image.size.width, Image.size.height);
+  
+  UIImageView *iv = [[UIImageView alloc] initWithImage:Image];
+  iv.bounds = iv.frame = self.frame;
+  iv.backgroundColor = [UIColor clearColor];
+  [self addSubview:iv];
+  [iv release];
+  
+  self.layer.superlayer.bounds = self.frame;
+  self.layer.superlayer.anchorPoint = self.layer.anchorPoint;
+}
+
+- (void) setAnimation:(CABasicAnimation*)Animation {
+  [self.layer removeAnimationForKey:@"PGPoint::Animation"];  
+  [self.layer addAnimation:Animation forKey:@"PGPoint::Animation"];
+}
+
+#pragma mark -
+#pragma mark CALLOUT
+#pragma mark -
+
+- (void) setCalloutTitle:(NSString*)Title {
+	calloutTitle = [Title retain];
+}
+- (void) setCalloutSubtitle:(NSString*)SubTitle {
+	calloutSubTitle = [SubTitle retain];
+}
+
+#pragma mark -
+#pragma mark TOUCHES
+#pragma mark -
+
+
+- (void) touchesBegan:(NSSet*)t withEvent:(UIEvent*)event {
+}
+
+- (void) touchesMoved:(NSSet*)t withEvent:(UIEvent*)event {
+}
+
+- (void) touchesEnded:(NSSet*)t withEvent:(UIEvent*)event {
+  if ( _Touchable ) {
+    NSSet *allTouches = [event allTouches];
+    
+    if ( [allTouches count] == 1 ) {
+      
+      NSEnumerator *enums = [allTouches objectEnumerator];
+      UITouch *t = (UITouch*)[enums nextObject];
+      
+      if ( _Map.CurrentPoint && _Map.CurrentPoint != self ) {
+        CGPoint point = [t locationInView:_Map.closer];
+        PGPointTouch touch = [_Map.CurrentPoint InsideTouch:point];
+        if ( touch == PGPointTouchButton ) return;
+
+        [_Map.CurrentPoint removeCallout:NO];
+      }
+      else if ( _Callout && !_Callout.hidden ) return;
+      
+      _Map.CurrentPoint = self;
+      [self ShowCallout];
+    }
+    [self ProtocolManager:@selector(PointClicked:onMap:) andObject:_Map];
+  }
+  _IsLongPress = NO;
+}
+
+- (int) InsideTouch:(CGPoint)Touch {
+  if ( !_Callout || _Callout.hidden ) return PGPointTouchOutside;
+  
+  CGPoint touch = [_Map.closer convertPoint:Touch toView:_Callout];
+  
+  if ( _Callout && [_Callout ButtonClicked:touch] ) {
+    [self handleCalloutClick:nil];
+    return PGPointTouchButton;
+  }
+
+  // Bisogna controllare sul m_Callout.bounds perchè è rispetto alle coordinate interne della view
+  if ( CGRectContainsPoint(_Callout.bounds, touch) ) return PGPointTouchCallout;
+  
+  return PGPointTouchOutside;
+}
+
+
+#pragma mark -
+#pragma mark CALLOUT
+#pragma mark -
+
+- (void) setCalloutButtonReceiver:(id)Receiver {
+	_Receiver = Receiver;
+}
+
+- (void) setCalloutButtonSelector:(SEL)Selector toTarget:(id)Target {
+	_Receiver = Target;
+	_Selector = Selector;
+  _Object   = nil;
+}
+
+- (void) setCalloutButtonSelector:(SEL)Selector withObject:(id)Object toTarget:(id)Target {
+	_Receiver = Target;
+	_Selector = Selector;
+  _Object   = [Object retain];
+}
+
+- (void) removeCallout:(BOOL)Force {	
+	if ( _Callout ) _Callout.hidden = YES;
+}
+
+- (void) ShowCallout {
+
+  if ( !_Callout ) {
+    if ( _CustomCallout ) _Callout = [[PGCallout alloc] initWithView:_CustomCallout andArrow:_CustomArrow toPoint:self];
+    else _Callout = [[PGCallout alloc]initWithText:calloutTitle withTextBtm:calloutSubTitle toPoint:self withAction:@selector(handleCalloutClick:)];
+    
+    [self addSubview:_Callout];
+  }
+
+  CGPoint inpoint = CGPointMake(self.center.x, 0);
+  
+  CGPoint inmap = [self convertPoint:inpoint toView:_Map];
+  inmap.x -= _Map.frame.origin.x;
+  inmap.y -= _Map.frame.origin.y;
+
+  CGPoint pan = [_Callout UpdatePosition:_Map];
+  
+  
+//  CGPoint p = [self convertPoint:m_Callout.frame.origin toView:m_Map];
+//  self.frame = CGRectMake(p.x, p.y, m_Callout.frame.size.width, m_Callout.frame.size.height + self.frame.size.height);
+  
+  if ( pan.x != 0 || pan.y != 0 ) [_Map panMapBy:pan withAnimation:YES];
+
+  _Callout.hidden = NO;
+}
+
+- (void) InitCallout {
+  if ( !m_Callout ) {
+    if ( m_CustomCallout ) m_Callout = [[PGCallout alloc] initWithView:m_CustomCallout andArrow:m_CustomArrow toPoint:self];
+    else m_Callout = [[PGCallout alloc]initWithText:calloutTitle withTextBtm:calloutSubTitle toPoint:self withAction:@selector(handleCalloutClick:)];
+    [self addSubview:m_Callout];
+  }
+  m_Callout.hidden = YES;
+}
+
+- (void) handleCalloutClick:(UIControl*)control {
+  if (_Receiver && [_Receiver respondsToSelector:_Selector] )
+    [_Receiver performSelectorOnMainThread:_Selector withObject:_Object waitUntilDone:NO];
+}
+
+- (void) setCustomCallout:(UIView*)CustomView {
+  if ( _CustomCallout ) {
+    [_CustomCallout release];
+    _CustomCallout = nil;
+  }
+  _CustomArrow   = nil;
+  _CustomCallout = [CustomView retain];
+}
+
+- (void) setCustomCallout:(UIView*)CustomView withArrow:(UIImage*)Img {
+  if ( _CustomCallout ) {
+    [_CustomCallout release];
+    _CustomCallout = nil;
+  }
+  if ( _CustomArrow ) {
+    [_CustomArrow release];
+    _CustomArrow = nil;
+  }
+  
+  _CustomArrow   = [Img retain];
+  _CustomCallout = [CustomView retain];
+}
+
+#pragma mark -
+
+- (void) ProtocolManager:(SEL)selector andObject:(id)Obj {
+  if ( !_Delegate || ![_Delegate conformsToProtocol:@protocol(PGPointDelegate)] || ![_Delegate respondsToSelector:selector] ) return;
+  
+  [_Delegate performSelector:selector withObject:self withObject:Obj];
+}
+
+- (void)viewDidUnload {
+}
+
+- (void)dealloc {  
+  if ( _Object        ) [_Object        release];
+  if ( _CustomCallout ) [_CustomCallout release];
+  if ( _CustomArrow   ) [_CustomArrow   release];
+  if ( _Callout       ) [_Callout       release];
+  if ( calloutTitle    ) [calloutTitle    release];
+  if ( calloutSubTitle ) [calloutSubTitle release];
+
+  if ( _TimerLongPress ) {
+    [_TimerLongPress invalidate];
+    [_TimerLongPress release];
+  }
+  
+  [super dealloc];
+}
+
+@end
+

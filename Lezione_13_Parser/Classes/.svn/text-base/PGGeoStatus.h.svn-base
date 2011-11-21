@@ -1,0 +1,75 @@
+//
+//  PGGeoStatus.h
+//  PGIPHONE
+//
+//  Created by Giovanni Catapano on 06/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+/*
+ 0 ok
+ 1 strade univoche in comuni ambigui (generato da una ricerca in modalità “Open Search” oppure “Campo Unico”)
+ 2 strada ambigua
+ 3 Località non trovata
+ 4 indirizzo non trovato
+ 5 civico non trovato
+ 7 errore nei parametri in input
+ 8 regione trovata
+ 9 provincia trovata
+ 10 località ambigua
+ 31 lista POI
+ 32 lista POO
+ 40 zona trovata
+ 60 macro zona trovata
+ 99 errore generico
+ */
+
+typedef enum {
+  PGGeoOutcodeOk              =  0,
+  PGGeoOutcodeStOkButTownConf =  1,
+  PGGeoOutcodeStreetConflict  =  2,
+  PGGeoOutcodeNoPlace         =  3,
+  PGGeoOutcodeNoStreet        =  4,
+  PGGeoOutcodeNoStreetNum     =  5,
+  PGGeoOutcodeNil             =  6,
+  PGGeoOutcodeParamError      =  7,
+  PGGeoOutcodeRegionOk        =  8, 
+  PGGeoOutcodeProvinceOk      =  9,
+  PGGeoOutcodePlaceConflict   = 10,
+  PGGeoOutcodePoiList         = 31,
+  PGGeoOutcodePooList         = 32,
+  PGGeoOutcodeAreaOk          = 40,
+  PGGeoOutcodeMacroAreaOk     = 60,
+  PGGeoOutcodeGenerericError  = 99 
+} PGGeoOutcodeType;
+
+/*
+ 0 geocodifica al civico esatto
+ 1 geocodifica al civico vicino
+ 2 geocodifica al centro della strada (non è stato trovato o specificato il civico)
+ 3 geocodifica al centro della località (la strada non è stata trovata o specificata) 
+ */
+
+typedef enum {
+  PGGeoLevelNone = -1,
+  PGGeoLevelStreetNumOk,
+  PGGeoLevelStreetNumNear,
+  PGGeoLevelStreetCenter,
+  PGGeoLevelPlaceCenter
+} PGGeoLevelType;
+
+@interface PGGeoStatus : NSObject {
+  PGGeoOutcodeType _Outcode;
+  PGGeoLevelType _LevelCoord;
+  int _NumRes;
+}
+
+@property (nonatomic, assign) PGGeoOutcodeType Outcode;
+@property (nonatomic, assign) PGGeoLevelType LevelCoord;
+@property (nonatomic, assign) int NumRes;
+
+
+@end
+

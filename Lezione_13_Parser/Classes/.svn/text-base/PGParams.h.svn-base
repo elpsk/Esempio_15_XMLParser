@@ -1,0 +1,87 @@
+//
+//  PGParams.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 25/10/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
+#import "CloserParams.h"
+#import "CloserMap.h"
+
+
+/** MapType
+ *  Una typedef per specificare il tipo di mappa
+ */
+typedef enum {
+  PGMapTypeStandard = 0,  /**< PGMapTypeStandard */
+	PGMapTypeOrto,          /**< PGMapTypeOrto     */
+	PGMapTypeMix,           /**< PGMapTypeMix      */
+  PGMapTypeLast           /**< PGMapTypeLast     */
+} PGMapType;
+
+/**
+ * Server Type
+ */
+typedef enum {
+  PGServerLbs = 0,
+  PGServerRoute,
+  PGServerReverse,
+  PGServerAria,
+  PGServerMeteo,
+  PGServerEngineTC,
+  PGServerEnginePG,
+  PGServerEnginePB,
+  PGServerBound,
+  PGServerCenter,
+  PGServerLast
+} PGServerType;
+
+/**
+ * Images Server
+ */
+enum {
+  PGAriaMeteoImage = 0
+};
+
+
+@interface PGParams : CloserParams {
+  NSString *m_Version;
+	int m_PointsForRegions;
+  int m_MapIncr;
+  int m_ToClip;
+  int _EnginePageSize;
+	NSString *m_Sito;
+  NSMutableArray *m_Copies;
+  NSMutableArray *m_Bounds;
+  NSMutableArray *m_Servers;
+  NSMutableArray *m_Images;
+}
+
+@property (nonatomic, retain) NSString *Version;
+@property (nonatomic, assign) int PointsForRegions;
+@property (nonatomic, assign) int MapIncr;
+@property (nonatomic, assign) int ToClip;
+@property (nonatomic, assign) int EnginePageSize;
+@property (nonatomic, retain) NSString *Sito;
+@property (nonatomic, retain) NSMutableArray *Copies;
+@property (nonatomic, retain) NSMutableArray *Bounds;
+@property (nonatomic, retain) NSMutableArray *Servers;
+@property (nonatomic, retain) NSMutableArray *Images;
+
+- (NSURL*) getDefaultUrl;
+
+/**
+ * Metodi esposti dalla libreria non cancellare
+ */
+
+- (void) setLat:(double)Latitude;
+- (void) setLon:(double)Longitude;
+- (void) setSito:(NSString *)SitoIn;
+- (void) setClipsToBounds:(BOOL)ToClip;
+
+/**/
+
+@end

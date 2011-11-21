@@ -1,0 +1,16 @@
+//
+//  PGSuperClass.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 08/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+
+@interface PGMutableArray : NSMutableArray {
+  NSMutableArray *m_Array;
+}
+
+@end

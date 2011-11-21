@@ -1,0 +1,271 @@
+//
+//  PGRoute.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 17/02/11.
+//  Copyright 2011 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import "PGRoute.h"
+#import "PGMap.h"
+#import "PGRouteParams.h"
+#import "PGBoundEx.h"
+#import "PGDevice.h"
+#import "PGRouteCircles.h"
+
+
+@interface PGRoute (Internals)
+  - (CLLocationCoordinate2D) refixCenter:(CLLocationCoordinate2D)start andStop:(CLLocationCoordinate2D)stop;
+  - (NSString*) formatTypeToString;
+  - (NSMutableArray*) normalizePoints:(NSMutableArray*)points;
+  - (float) GetZoomRelatedBound:(float)z;
+  - (BOOL) IsPrinteablePoint:(CGPoint)Current withPrev:(CGPoint)Prev atZoom:(int)Zoom;
+  - (BOOL) IsDistanceCacheableFromStartCoords:(CLLocationCoordinate2D)Start andEndCoords:(CLLocationCoordinate2D)End andMaxDistance:(int)Distance;
+  - (CGPoint) NormalizeCoord:(CGPoint)Coord andWayPoint:(CoordsUTM)WayPoint;
+@end
+
+@implementation PGRoute
+
+@synthesize Result=m_Result, Params=m_Params, Bound=m_Bound, Points=m_Points, Circles=m_Circles;
+
+/*
+ * Zoom disponibili:     -1  0  1  2  3  4  5  6  7  8  9 10 11 12 13
+ */
+const int ZoomDelta[] = { 0, 0, 0, 1, 1, 1, 2, 2, 3, 5, 5, 5, 7, 7, 5 };
+
+
+- (id) init {
+  self = [super init];
+  if ( !self ) return nil;
+
+	parser   = [[PGParser alloc] init];
+  m_Result = [[PGRouteResults alloc] init];
+	m_Params = nil;
+  m_Circles = nil;
+  
+	return self;
+}
+
+- (id) initWithPoints:(NSArray*)points andParams:(PGRouteParams*)params {
+  self = [self init];
+  [self setParams:params];
+  
+  m_Points = [points retain];
+
+  return self;
+}
+
+- (void) ShowCircles:(BOOL) show {
+  if ( show ) {
+    if ( !m_Circles ) {
+      m_Circles = [[NSMutableArray alloc] init];
+      for (PGRStep *step in m_Result.Rsteps) {
+        PGRouteCircles *rc = [[PGRouteCircles alloc] initWithDefaultValues:step.IdRstep andCoords:step.Coord];
+        [m_Circles addObject:rc];
+        [rc release];
+      }
+    }    
+    for (PGRouteCircles *ci in m_Circles) [delegate addPoint:ci :ci.Coordinate :CGPointMake(0.5, 0.5)];
+  } else {
+    if ( m_Circles ) {
+      for ( PGRouteCircles *rc in m_Circles ) [delegate removePoint:rc];
+      [m_Circles release];
+      m_Circles = nil;
+    }
+  }
+}
+
+- (void) ShowCirclesAt:(int) idx {
+
+  if ( m_Circles ) {
+    for ( PGRouteCircles *rc in m_Circles ) [delegate removePoint:rc];
+    [m_Circles release];
+    m_Circles = nil;
+  }  
+  if ( !m_Circles ) m_Circles = [[NSMutableArray alloc] init];
+  
+  // tutti i cerchi fino al corrente
+  for (int i=0; i<idx; i++) {
+    PGRStep *step = [m_Result.Rsteps objectAtIndex:i];
+    PGRouteCircles *rc = [[PGRouteCircles alloc] initWithDefaultValues:step.IdRstep andCoords:step.Coord];
+    //PGRouteCircles *rc = [[PGRouteCircles alloc] initWithIndex:step.IdRstep backgroundColor:[UIColor blueColor] foregroundColor:[UIColor whiteColor] andCoords:step.Coord];
+    [m_Circles addObject:rc];
+    [rc release];
+  }
+  
+  for (PGRouteCircles *ci in m_Circles) [delegate addPoint:ci :ci.Coordinate :CGPointMake(0.5, 0.5)];  
+}
+
+- (void)dealloc {
+	if ( m_Result ) {
+    [m_Result release]; 
+    m_Result = nil;
+  }
+  if ( m_Params ) {
+    [m_Params release];
+    m_Params = nil;
+  }
+  if ( m_Points ) {
+    for ( PGPoint *point in m_Points ) [delegate removePoint:point];
+    [m_Points release];
+    m_Points = nil;
+  }
+  if ( m_Circles ) {
+    for ( PGRouteCircles *rc in m_Circles ) [delegate removePoint:rc];
+    [m_Circles release];
+    m_Circles = nil;
+  }
+
+	[parser release];
+	[super dealloc];
+}
+
+- (void) setParams:(PGRouteParams*)pars {
+	m_Params = [pars retain];
+}
+
+- (void) SetDelegate:(id)Delegate andServerUrl:(NSString *)url andPFR:(int)PFR {
+  delegate = Delegate;
+	m_Server = url;
+	m_Params.PointsForRegions = PFR;  
+}
+
+- (void) SetParams:(PGRouteParams*)Pars andDelegate:(id)Delegate andServerUrl:(NSString *)url andPFR:(int)PFR {
+  delegate = Delegate;
+  [self setParams:Pars];
+	m_Server = url;
+	m_Params.PointsForRegions = PFR;
+}
+
+- (CLLocationCoordinate2D) refixCenter:(CLLocationCoordinate2D)start andStop:(CLLocationCoordinate2D)stop {
+	return PGLocationCoordinate2DMake((start.latitude  + stop.latitude)  / 2, (start.longitude + stop.longitude) / 2);
+}
+
+- (NSString*) GetUrl:(int)RouteId {
+	return [NSString stringWithFormat:@"%@"
+																		 "x=0&y=0&"
+                                     "lx=%f&ly=%f&ex=%f&ey=%f&"
+																		 "rt=%@&"
+                                     "sito=%@&"
+                                     "mode=tc&idx=3&zone=32&coordsonly=no&"
+                                     "format=xml&routeId=%d&"
+                                     "vpt=utm&"
+																		 "pfr=%d", //&date=2011-06-08T18:31:03",
+					m_Server,
+          m_Params.startCoords.longitude, m_Params.startCoords.latitude,
+          m_Params.endCoords.longitude, m_Params.endCoords.latitude,
+          [m_Params getRouteTypeAsString],
+          m_Params.routeSito, RouteId,
+					m_Params.PointsForRegions];
+}
+
+- (void) GetRoute:(int)RouteId withXml:(NSString*)Xml {
+  if ( !m_Result ) {
+    [m_Result release];
+    m_Result = nil;
+  }
+  [PGParser routingParser:m_Result inputXML:Xml];
+}
+
+- (CGPoint) NormalizeCoord:(CGPoint)Coord andWayPoint:(CoordsUTM)WayPoint {
+  float k = pow(2, ([delegate getZoom]+3));
+  
+  CGPoint current;
+  current.x = Coord.x - WayPoint.easting;
+  current.x /= MAPWIDTHMETERS;
+  current.x *= MAPWIDTHLEVEL1PIXELS;
+  current.x /= k;
+  
+  current.y = WayPoint.northing - Coord.y;
+  current.y /= MAPWIDTHMETERS;
+  current.y *= MAPWIDTHLEVEL1PIXELS;
+  current.y /= k;
+  
+	return CGPointMake((int)(current.x + 0.5), (int)(current.y + 0.5));
+}
+
+- (int) GetPoints:(NSMutableArray*)Points ofRouteId:(int)RouteId {
+  int index = 0;
+  
+	if ([m_Result.WayPoints count] == 0) return 0;
+	
+	PGBoundEx * bestbound = [[[PGBoundEx alloc] InitWithBound:[self GetBestBound]] autorelease];
+	
+	PGRStep *rs = [m_Result RstepAtIndex:m_Params.HiliteUntilIndex];
+	
+	CGPoint prev = CGPointMake(0, 0);
+	
+	int global = -1;
+
+	for ( int ri=0; ri<[m_Result.RegionBounds count]; ri++ ) {
+		PGRegion * region = [m_Result.RegionBounds objectAtIndex:ri];
+		
+		if (![bestbound Excluded:region.Bound])
+		{
+			for ( int i=0; i < [region.Coords count]; i++ ) 
+			{
+				global++;
+				NSValue *val = [region.Coords objectAtIndex:i];
+				CGPoint coord = [val CGPointValue];
+				
+				if ((coord.x  >= bestbound.Left  && coord.x  <= bestbound.Right) && 
+						(coord.y <= bestbound.Top   && coord.y >= bestbound.Bottom)) 
+				{
+					PGWayPoint *wp = [m_Result.WayPoints objectAtIndex:WP_START];
+					CGPoint current = [self NormalizeCoord:coord andWayPoint:wp.DrwAt];
+					
+					if ( (global-1) != rs.LastCoordIndex && [Points count] > 0 && ![self IsPrinteablePoint:current withPrev:prev atZoom:([delegate getZoom] + 0.5)] ) continue;
+					
+					[Points addObject:[NSString stringWithFormat:@"%d,%d", (int)current.x, (int)current.y]];
+					
+					if ( rs && global <= rs.LastCoordIndex) index++;
+					
+					prev = CGPointMake(current.x, current.y) ;
+				}
+			}	
+		}
+		else 
+			global += [region.Coords count];
+	}
+	
+	m_Result.RouteId = RouteId;
+
+  return index;
+}
+
+- (BOOL) IsPrinteablePoint:(CGPoint)Current withPrev:(CGPoint)Prev atZoom:(int)Zoom {
+  if ( Current.x == Prev.x && Current.y == Prev.y ) return NO;
+  return (fabsf(Current.x - Prev.x) > ZoomDelta[Zoom] || fabsf(Current.y - Prev.y) > ZoomDelta[Zoom]);
+}
+
+- (PGBound) GetBestBound {
+  PGBound bound = [delegate getMapBounds];
+  CoordsUTM bl = [PGFormule LL2UTM:bound.bottom :bound.left  :32];
+  CoordsUTM tr = [PGFormule LL2UTM:bound.top    :bound.right :32];
+
+   // buound dinamico
+  float incr = [self GetZoomRelatedBound:(float)[delegate getZoom]];
+  bl.easting  -= incr;
+  bl.northing -= incr;
+  tr.easting  += incr;
+  tr.northing += incr;
+  
+  return PGBoundMake(tr.northing, bl.easting, bl.northing, tr.easting);
+}
+
+- (float) GetZoomRelatedBound:(float)z {  
+  if ( [PGDevice GetPlatformType] == UIDevice4iPhone ) return [delegate getMaxMapMeters:z] * 3;
+  return [delegate getMaxMapMeters:z] * 1.5;
+}
+
+- (void) ProtocolManager:(SEL)selector andObject:(id)Obj {
+  if ( !delegate || 
+      ![delegate conformsToProtocol:@protocol(PGRouteDelegate)] || 
+      ![delegate respondsToSelector:selector] ) 
+    return;
+  
+  [delegate performSelector:selector withObject:self withObject:Obj];
+}
+
+@end
+

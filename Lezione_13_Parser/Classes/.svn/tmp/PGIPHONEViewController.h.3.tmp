@@ -1,0 +1,43 @@
+//
+//  PGIPHONEViewController.h
+//  PGIPHONE
+//
+//  Created by Seat Team PGNAV on 08/10/10.
+//  Copyright __MyCompanyName__ 2010. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "PGMap.h"
+#import "PGParser.h"
+#import "PGRoute.h"
+
+@interface PGIPHONEViewController : UIViewController <PGMapDelegate, PGRouteDelegate> {
+
+  IBOutlet UIView *m_View;
+  IBOutlet UIButton *m_Prev;
+  IBOutlet UIButton *m_Next;
+  IBOutlet UILabel  *m_StateLabel;
+  IBOutlet UIImageView  *m_StateImage;
+
+	PGMap *map;
+  PGRouteParams *m_RoutePar;
+}
+
+@property (nonatomic, retain) UIView *MyView;
+@property (nonatomic, retain) UIButton *Prev;
+@property (nonatomic, retain) UIButton *Next;
+@property (nonatomic, retain) UILabel *StateLabel;
+@property (nonatomic, retain) UIImageView *StateImage;
+
+- (IBAction) enableGpsOnMap:(id)Sender;
+- (IBAction) enableCompassOnMap:(id)Sender;
+- (IBAction) changeBound:(id)Sender;
+- (IBAction) enableStep:(id)Sender;
+- (IBAction) changeStep:(id)Sender;
+- (IBAction) changeMapType:(id)Sender;
+- (IBAction) enableRoute:(id)Sender;
+
+- (IBAction) test;
+
+@end
+

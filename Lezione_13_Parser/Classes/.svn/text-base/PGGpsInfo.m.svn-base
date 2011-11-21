@@ -1,0 +1,45 @@
+//
+//  PGGpsInfo.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 10/05/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGGpsInfo.h"
+
+
+@implementation PGSpeed
+
+@synthesize MpS=m_MpS, KpH=m_KpH, MpH=m_MpH;
+
+- (int) KpH {
+  int speed = (int)(m_MpS * 3.6 + 0.5);
+  return speed > 0 ? speed : 0;
+}
+
+- (int) MpH {
+  int speed = (int)m_MpS * 2.23693629 + 0.5;
+  return speed > 0 ? speed : 0;
+}
+
+@end
+
+
+@implementation PGGpsInfo
+
+@synthesize Location=m_Location, Speed=m_Speed;
+
+- (id) init {
+  self = [super init];
+  m_Speed = [[PGSpeed alloc] init];
+  return self;
+}
+
+- (void) dealloc {
+  if ( m_Location ) [m_Location release];
+  if ( m_Speed    ) [m_Speed    release];
+  [super dealloc];
+}
+
+@end

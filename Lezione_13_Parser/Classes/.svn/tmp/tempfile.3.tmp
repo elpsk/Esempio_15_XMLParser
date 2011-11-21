@@ -1,0 +1,363 @@
+//
+//  PGPoint.m
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 08/10/10.
+//  Copyright 2010 SEAT Pagine Gialle - Cutaway SRL. All rights reserved.
+//
+
+#import "PGPoint.h"
+#import "PGMap.h"
+#import "PGFormule.h"
+#import "PGDevice.h"
+#import "PGConfig.h"
+
+/**
+ *  Internals Methods.
+ */
+@interface PGPoint (Internals)
+- (void) ShowCalloutAt:(CGPoint)point;
+- (NSString*) SetCallout:(NSString*)String;
+- (void) startLongPressCounter;
+- (UIImage*) GetPallino:(PGPointType)Type;
+- (CGPoint) GetAncor:(PGPointType)Type;
+- (void) PullUpPoint;
+- (void) DropUpPoint;
+@end
+
+/**
+ * Classe PGPoint per disegnare e aggiungere un pallino sulla mappa
+ */
+@implementation PGPoint
+
+@synthesize delegate, Position=m_Position, Anchor=m_Anchor;
+
+
+- (CGPoint) GetAncor:(PGPointType)Type {
+  switch ( Type ) {
+    case PGPointTypeLocation: return CGPointMake(0.5, 0.5);
+  }
+  return CGPointMake(0.5, 1);
+}
+
+- (UIImage*) GetPallino:(PGPointType)Type {
+	@try {
+		switch( Type ) {
+			case PGPointTypeYellow: {
+        UIImage *pgpointyellow = nil;
+        if ( !pgpointyellow ) pgpointyellow = [UIImage imageNamed:@"PgLib.bundle/mk_pallino.png"];
+				return pgpointyellow;
+      }
+			case PGPointTypeBlue: {
+        UIImage *pgpointblue = nil;
+        if ( !pgpointblue ) pgpointblue = [UIImage imageNamed:@"PgLib.bundle/mk_pallino_blue.png"];
+				return pgpointblue;
+      }
+			case PGPointTypeManStatic: {
+        UIImage *pgpointmstatic = nil;
+        if ( !pgpointmstatic ) pgpointmstatic = [UIImage imageNamed:@"PgLib.bundle/iphone_static.png"];
+				return pgpointmstatic;
+      }
+			case PGPointTypeManMoving: {
+        UIImage *pgpointmmove = nil;
+        if ( !pgpointmmove ) pgpointmmove = [UIImage imageNamed:@"PgLib.bundle/iphone_moving.png"];
+				return pgpointmmove;
+      }
+			case PGPointTypeCenter: {
+        UIImage *pgpointcentro = nil;
+        if ( !pgpointcentro ) pgpointcentro = [UIImage imageNamed:@"PgLib.bundle/iphone_centro.png"];
+				return pgpointcentro;
+      }
+			case PGPointTypeLocation: {
+        UIImage *pgpointlocation = nil;
+        if ( !pgpointlocation ) pgpointlocation = [UIImage imageNamed:@"PgLib.bundle/pin.png"];
+				return pgpointlocation;
+      }
+      case PGPointTypeCanvas: {
+				UIImage *pgpointcanvas = nil;
+        if ( !pgpointcanvas ) pgpointcanvas = [UIImage imageNamed:@"PgLib.bundle/mk_canvas.png"];
+				return pgpointcanvas;
+      }
+      case PGPointTypeOpec: {
+				UIImage *pgpointopec = nil;
+        if ( !pgpointopec ) pgpointopec = [UIImage imageNamed:@"PgLib.bundle/mk_opec.png"];
+				return pgpointopec;
+      }
+      case PGPointTypeIpadYellow: {
+				UIImage *pgpointipady = nil;
+        if ( !pgpointipady ) pgpointipady = [UIImage imageNamed:@"PgLib.bundle/YellowPagesMarker.png"];
+				return pgpointipady;
+      }
+      case PGPointTypeIpadWhite: {
+				UIImage *pgpointipadw = nil;
+        if ( !pgpointipadw ) pgpointipadw = [UIImage imageNamed:@"PgLib.bundle/WhitePagesMarker.png"];
+				return pgpointipadw;
+      }
+      case PGPointTypeDefault:
+			default: {
+				UIImage *pgpointdef = nil;
+        if ( !pgpointdef ) pgpointdef = [UIImage imageNamed:@"PgLib.bundle/mk_pallino.png"];
+				return pgpointdef;
+      }
+		}
+	}
+	@catch (NSException * e) {
+		//NSLog(@"PGPoint failed to load.");
+	}
+  return nil;
+}
+
+- (id) initWith:(CLLocationCoordinate2D)coords 
+      pointType:(PGPointType)t 
+    isDraggable:(BOOL)drag 
+            pos:(CGPoint)p 
+         inView:(UIView*)v 
+    isTouchable:(BOOL)touchEnabled
+{
+	m_Draggable = drag;
+	m_Touchable = touchEnabled;
+  
+  isOnLongPressMode = NO;
+	
+	m_Map = v;
+	m_Position.latitude  = coords.latitude;
+  m_Position.longitude = coords.longitude;
+	
+  m_Anchor = [self GetAncor:t];
+  
+	UIImage* img = [self GetPallino:t];
+	m_ImageView = [[UIImageView alloc] initWithImage:img];
+	m_ImageView.bounds = m_ImageView.frame = CGRectMake(0,0, img.size.width, img.size.height);
+	m_ImageView.backgroundColor = [UIColor clearColor];
+	
+	self = [super initWithFrame:m_ImageView.frame];
+	[self addSubview:m_ImageView];
+  [m_ImageView release];
+  
+  m_Receiver = m_Object = nil;
+  
+  return self;
+}
+
+#pragma mark -
+#pragma mark CALLOUT
+#pragma mark -
+
+- (NSString*) SetCallout:(NSString*)String {
+	NSString *shortString = [NSString stringWithString:String];
+	
+	if ([String length] >= 20) {
+		NSRange stringRange = {0, MIN([String length], 20)};
+		stringRange = [String rangeOfComposedCharacterSequencesForRange:stringRange];
+		shortString = [String substringWithRange:stringRange];
+		if ([shortString length] >= 20)
+			shortString = [[String substringWithRange:stringRange] stringByAppendingString:@"..."];
+	}
+  
+  return shortString;
+}
+- (void) setCalloutTitle:(NSString*)Title {
+	calloutTitle = [[NSString alloc] initWithString:[self SetCallout:Title]];
+}
+- (void) setCalloutSubtitle:(NSString*)SubTitle {
+	calloutSubTitle = [[NSString alloc] initWithString:[self SetCallout:SubTitle]];
+}
+
+#pragma mark -
+#pragma mark TOUCHES
+#pragma mark -
+
+- (void) touchesBegan:(NSSet*)t withEvent:(UIEvent*)event {
+  m_Touches = t;
+  m_Event   = event;
+  
+  isOnLongPressMode = NO;
+  //  if ( m_Draggable && m_Touchable ) {
+  //    secondsInterval = CFAbsoluteTimeGetCurrent();
+  //    lpTim = [[NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(startLongPressCounter) userInfo:nil repeats:NO] retain];
+  //  }
+}
+
+- (void) touchesMoved:(NSSet*)t withEvent:(UIEvent*)event {
+  //  if ( isOnLongPressMode && m_Draggable && m_Touchable ) {
+  //    UITouch *touch = [[[event allTouches] allObjects] objectAtIndex:0];    
+  //    if (m_DragPoint.x == 0 && m_DragPoint.y == 0) 
+  //    {
+  //      [self PullUpPoint];
+  //      self.center = CGPointMake(self.center.x, self.center.y - self.frame.size.height);
+  //      m_DragPoint = CGPointMake([touch locationInView:self].x, [touch locationInView:self].y);
+  //      return;
+  //    }
+  //
+  //    self.center = CGPointMake(self.center.x + [touch locationInView:self].x - m_DragPoint.x, 
+  //                              self.center.y + [touch locationInView:self].y - m_DragPoint.y);
+  //    m_DragPoint = CGPointMake([touch locationInView:self].x, [touch locationInView:self].y);
+  //  }
+}
+
+- (void) touchesEnded:(NSSet*)t withEvent:(UIEvent*)event {
+  if ( m_Touchable ) {
+    [[m_Map CurrentPoint] removeCallout];
+    [m_Map setCurrentPoint:self];
+    NSSet *allTouches = [event allTouches];
+    switch ( [allTouches count] ) {
+      case 1:{
+        CGPoint poi = [self convertPoint:CGPointMake(self.center.x, self.frame.origin.y) toView:m_Map];
+        poi.x -= [m_Map bounds].origin.x;
+        poi.y -= [m_Map bounds].origin.y;
+        
+        if ( !isOnLongPressMode ) [self ShowCalloutAt:poi];          
+        else [self DropUpPoint];
+        
+        break;
+      }
+    }
+  }
+  
+  isOnLongPressMode = NO;
+  //  if (lpTim != nil) {
+  //    [lpTim invalidate];	
+  //    lpTim = nil;
+  //  }
+}
+
+- (void) startLongPressCounter {  
+	double interval = CFAbsoluteTimeGetCurrent() - secondsInterval;
+	if ( interval >= 0.7 ) {
+		isOnLongPressMode = YES;
+    m_DragPoint = CGPointMake(0,0);
+    if (lpTim != nil) {
+			[lpTim invalidate];	
+			lpTim = nil;
+		}
+		[self touchesMoved:m_Touches withEvent:m_Event];
+	}
+}
+
+#pragma mark -
+#pragma mark POINT_ANIMATION
+#pragma mark -
+
+/* porto il pgpoint in su al touch MOVE (first) con longpress */
+- (void) PullUpPoint {
+  [UIView beginAnimations:@"pullUp" context:nil];
+  [UIView setAnimationDuration:0.07];
+  [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+  [UIView setAnimationDelegate:self];
+  [UIView setAnimationDidStopSelector:@selector(PullUpPointStop)];
+  [self setCenter:CGPointMake(self.center.x, self.center.y + 5 )];
+  [UIView commitAnimations];
+}
+- (void) PullUpPointStop {
+  [UIView beginAnimations:@"pullDw" context:nil];
+  [UIView setAnimationDuration:0.07];
+  [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+  [self setCenter:CGPointMake(self.center.x, self.center.y/* - self.frame.size.height*/ )];
+  [UIView commitAnimations];
+}
+
+/* animo il pgpoint al touch END del longpress */
+- (void) DropUpPoint {
+  [UIView beginAnimations:@"dropUp" context:nil];
+  [UIView setAnimationDuration:0.2];
+  [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+  [UIView setAnimationDelegate:self];
+  [UIView setAnimationDidStopSelector:@selector(DropUpPointStop)];
+  [self setCenter:CGPointMake(self.center.x, self.center.y - self.frame.size.height )];
+  [UIView commitAnimations];
+}
+- (void) DropUpPointStop {
+  [UIView beginAnimations:@"dropDw" context:nil];
+  [UIView setAnimationDuration:0.1];
+  [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+  [self setCenter:CGPointMake(self.center.x, self.center.y + self.frame.size.height )];
+  [UIView commitAnimations];
+}
+
+#pragma mark -
+#pragma mark CALLOUT
+#pragma mark -
+
+- (void) setCalloutButtonReceiver:(id)Receiver {
+	m_Receiver = Receiver;
+}
+
+- (void) setCalloutButtonSelector:(SEL)Selector toTarget:(id)Target {
+	m_Receiver = Target;
+	m_Selector = Selector;
+  m_Object   = nil;
+}
+
+- (void) setCalloutButtonSelector:(SEL)Selector withObject:(id)Object toTarget:(id)Target {
+	m_Receiver = Target;
+	m_Selector = Selector;
+  m_Object   = [Object retain];
+}
+
+- (void) removeCallout {	
+	if (m_Callout != nil) {
+		[m_Callout removeFromSuperview];
+		m_Callout = nil;
+	}
+}
+
+- (void) ShowCalloutAt:(CGPoint)point {
+	[self removeCallout];
+  
+  if ( !m_CustomCallout ) {
+    m_Callout = [PGCallout AddCalloutView:calloutTitle withTextBtm:calloutSubTitle atPosition:point toPoint:self withAction:@selector(handleCalloutClick:) toMap:m_Map];
+  } else {
+    m_Callout = [PGCallout AddCustomView:m_CustomCallout withArrow:m_CustomArrow AtPosition:point toPoint:self withAction:@selector(handleCalloutClick:) toMap:m_Map];
+  }
+}
+
+- (void) handleCalloutClick:(UIControl*)control {
+  if ( [m_Receiver respondsToSelector:m_Selector] )
+    [m_Receiver performSelectorOnMainThread:m_Selector withObject:m_Object waitUntilDone:NO];
+}
+
+- (void) setCustomCallout:(UIView*)CustomView {
+  if ( m_CustomCallout ) {
+    [m_CustomCallout release];
+    m_CustomCallout = nil;
+  }
+  m_CustomArrow   = nil;
+  m_CustomCallout = [CustomView retain];
+}
+
+- (void) setCustomCallout:(UIView*)CustomView withArrow:(UIImage*)Img {
+  if ( m_CustomCallout ) {
+    [m_CustomCallout release];
+    m_CustomCallout = nil;
+  }
+  if ( m_CustomArrow ) {
+    [m_CustomArrow release];
+    m_CustomArrow = nil;
+  }
+  
+  m_CustomArrow   = [Img retain];
+  m_CustomCallout = [CustomView retain];
+}
+
+#pragma mark -
+
+- (void)viewDidUnload {
+}
+
+- (void)dealloc {
+  if ( m_Object ) [m_Object release];
+  m_Object = nil;
+  
+  if ( m_CustomCallout ) [m_CustomCallout release];
+  m_CustomCallout = nil;
+  
+  if ( m_CustomArrow ) [m_CustomArrow release];
+  m_CustomArrow = nil;
+  
+  [calloutTitle release];
+  [calloutSubTitle release];
+  [super dealloc];
+}
+
+@end
+

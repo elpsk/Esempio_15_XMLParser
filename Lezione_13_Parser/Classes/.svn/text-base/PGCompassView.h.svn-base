@@ -1,0 +1,27 @@
+//
+//  PGCompassView.h
+//  PGIPHONE
+//
+//  Created by Alberto Pasca on 17/06/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import "PGCircle.h"
+
+enum Cardinals {
+  Nord = 123,
+  Est,
+  Sud,
+  Ovest
+};
+
+@interface PGCompassView : UIView {
+
+}
+
+- (void) setAngle:(float)degrees;
+
+@end
+

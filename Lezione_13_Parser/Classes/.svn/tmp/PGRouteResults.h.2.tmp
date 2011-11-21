@@ -1,0 +1,55 @@
+//
+//  PGRouteResults.h
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 22/02/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+/**
+ *	Class containing all the information necessary to routing (maps & step)
+ */
+
+#import <Foundation/Foundation.h>
+#import "PGRStep.h"
+#import "PGWayPoint.h"
+#import "PGRegion.h"
+
+@interface PGRouteResults : NSObject {
+	NSMutableArray	*m_RegionBounds;	/**< list containing   */
+	NSMutableArray	*m_WayPoints;	/**< list containing way point objects  */
+	NSMutableArray	*m_Rstep;		/**< list containig rstep objects */
+	int	            m_RouteId;	/**< int value */
+	float						m_TotalLength;	/**< float value corresponding to the length of the route */
+	int	            m_TotalTime;	/**< int value corresponding to the total time of the route */
+	PGBound					m_RouteBound;
+}
+
+@property (readonly) NSMutableArray		*RegionBounds;
+@property (readonly) NSMutableArray		*WayPoints;
+@property (readonly) NSMutableArray		*Rsteps;
+@property (assign) int								RouteId;
+@property (assign) float							TotalLength;
+@property (assign) int								TotalTime;
+@property	(assign) PGBound						RouteBound;
+
+- (void) addRegion:(float)top addLeft:(float)left addBottom:(float)bottom addRight:(float)right;
+
+/**
+ *	Method to add a Rstep object into rstep list
+ *	@param country a NSSTring point value
+ *	@param 
+ */
+- (void) addStep:current addCountry:(NSString *)country addCross:(int)cross addDestExit:(NSString *)destExit addDestSt:(NSString *)destSt addDir:(int)dir 
+		  addDsc:(NSString *)dsc addEcop:(BOOL)ecop addExit:(NSString *)exit addId:(int)idRstep addLoc:(NSString *)loc addPdes:(int)pdes
+		   addPt:(int)pt addRbExit:(int)rbExit addState:(NSString *)state addStlev:(BOOL)stlev addThrough:(BOOL)through addToll:(BOOL)toll
+			 addTunnel:(BOOL)tunnel addTurn:(int)turn addX:(float)x addY:(float)y addLastCoord:(int)lastCoord withPFR:(int)PFR;
+
+/**
+ *	Method to add a WayPoint object into wayPoints list
+ */
+- (void) addWayPoint:(float)x addY:(float)y addLoc:(NSString *)loc addDsc:(NSString *)dsc addDrwX:(float)drwX addDrwY:(float)drwY;
+
+- (PGRStep *) RstepAtIndex:(int)Index;
+
+@end

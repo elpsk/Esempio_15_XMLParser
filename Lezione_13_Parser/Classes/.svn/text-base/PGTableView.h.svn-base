@@ -1,0 +1,33 @@
+//
+//  PGTableView.h
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 01/09/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "PGMap.h"
+
+
+@protocol PGTableViewDelegate <NSObject>
+  @optional
+    - (void) AutocompleteChoice:(NSString *)choice withTag:(int)tag;
+@end
+
+
+@interface PGTableView : UITableView <UITableViewDelegate, UITableViewDataSource, PGAutocompleteDelegate> {
+  id<PGTableViewDelegate> _Receiver;
+  NSArray *_Results;
+  PGAutocomplete *_Auto;
+  NSOperationQueue *_Queue;
+  int _MaxHeight;
+}
+
+@property (nonatomic, assign) int MaxHeight;
+
+- (id) initWithFrame:(CGRect)Frame andParams:(PGParams*)Params andReciver:(id<PGTableViewDelegate>)Receiver;
+- (void) Autocomplete:(NSString *)String;
+- (void) GetAutocompleteResults:(NSArray*)Array;
+
+@end

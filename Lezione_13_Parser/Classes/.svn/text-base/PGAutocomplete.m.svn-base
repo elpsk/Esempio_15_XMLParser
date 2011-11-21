@@ -1,0 +1,196 @@
+//
+//  PGAutocomplete.m
+//  PGIPHONE
+//
+//  Created by Gianluca Folloni on 20/07/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGAutocomplete.h"
+#import "PGConfig.h"
+#import "PGParser.h"
+#import "PGHttpWrapper.h"
+
+
+@interface PGAutocomplete (Internals)
+  - (void) SearchStreets;
+  - (void) StreetsFound:(NSData*)Data;
+  - (void) ProtocolManager:(NSArray*)Array;
+@end
+
+
+@implementation PGAutocomplete
+
+@synthesize Delegate= _Delegate;
+
+const int MaxResult = 10;
+
+
+#pragma mark Initialization
+
+- (void) main {
+  NSString *filename =[PGConfig GetBundleFile:@"iPhone_localita_it" ofType:@"txt"];
+  _NTowns = LoadArray(&_Towns, [filename cStringUsingEncoding:NSUTF8StringEncoding]);
+  
+  filename =[PGConfig GetBundleFile:@"iPhone_frazioni_it" ofType:@"txt"];
+  _NLocations = LoadArray(&_Locations, [filename cStringUsingEncoding:NSUTF8StringEncoding]);
+}
+
+- (id) initWithConfiguration:(PGParams*)Params {
+  self = [super init];
+  
+  if ( self ) {
+    _Params = [Params retain];
+    _TimerLbs = nil;
+  }
+  
+  return self;
+}
+
+- (void) dealloc {
+  if ( _Towns     ) free(_Towns);
+  if ( _Locations ) free(_Locations);
+
+  if ( _Params    ) [_Params release];
+
+  if ( _TimerLbs ) {
+    [_TimerLbs invalidate];
+    [_TimerLbs release];
+  }
+  
+  [super dealloc];
+}
+
+
+#pragma mark Public
+
+- (void) Autocomplete:(NSString*)String {
+
+  NSMutableArray *res = [NSMutableArray array];
+
+  if ( [String length] > 0 ) {
+    
+    String = [String uppercaseString];
+    
+    int floc = 0;
+    int nloc = SearchDichotomic([String cStringUsingEncoding:NSUTF8StringEncoding], _Towns, _NTowns, &floc);
+
+    PGLocT *aloc = nil, *afraz = nil;
+    if ( nloc > 0 ) {
+      aloc = calloc(sizeof(PGLocT), nloc);
+      memcpy(aloc, &_Towns[floc], sizeof(PGLocT) * nloc);
+      qsort(aloc, nloc, sizeof(PGLocT), Sort);
+    }
+    
+    int ffraz = 0, nfraz = 0;
+    if ( nloc == 0 || nloc < MaxResult ) {
+      nfraz = SearchDichotomic([String cStringUsingEncoding:NSUTF8StringEncoding], _Locations, _NLocations, &ffraz);
+
+      if ( nfraz > 0 ) {
+        afraz = calloc(sizeof(PGLocT), nfraz);
+        memcpy(afraz, &_Locations[ffraz], sizeof(PGLocT) * nfraz);
+        qsort(afraz, nfraz, sizeof(PGLocT), Sort);
+        
+        if ( (nloc + nfraz) > MaxResult ) nfraz = MaxResult - nloc;
+      }
+    }
+
+    PGLocT *found = nil;
+    if ( aloc || afraz ) {
+      found = calloc(sizeof(PGLocT), nloc + nfraz);
+      if ( aloc  ) memcpy(found, aloc, sizeof(PGLocT) * nloc);
+      if ( afraz ) memcpy(&found[nloc], afraz, sizeof(PGLocT) * nfraz);
+
+      nloc += nfraz;
+      for ( int idx=0; idx<nloc; idx++ ) {
+        PGLocT *loc = &found[idx];
+        NSString *string = [[NSString alloc] initWithCString:loc->Format encoding:NSUTF8StringEncoding];
+        [res addObject:string];
+        [string release];
+      }
+    }
+    
+    if ( aloc  ) free(aloc);
+    if ( afraz ) free(afraz);
+    if ( found ) free(found);
+
+    if ( [res count] == 0 ) {
+      if ( _TimerLbs ) {
+        [_TimerLbs invalidate];
+        [_TimerLbs release];
+      }
+      
+      _TimerLbs = [[NSTimer scheduledTimerWithTimeInterval:(0.3) target:self selector:@selector(SearchStreets) userInfo:String repeats:NO] retain];
+      return;
+    }
+  }
+  
+  [self ProtocolManager:res];
+}
+
+
+#pragma mark Protected
+
+- (void) SearchStreets {
+  if ( ![_TimerLbs isValid] ) return;
+  
+  NSString *query = [NSString stringWithFormat:@"%@&topotipo=0&nresout=%d&sito=app", [_TimerLbs userInfo], MaxResult];
+  query = [NSString stringWithFormat:[_Params.Servers objectAtIndex:PGServerLbs], [query stringByReplacingOccurrencesOfString:@" " withString:@"+"]];
+
+  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+  [dict setObject:NSStringFromSelector(@selector(StreetsFound:)) forKey:@"selector"];
+  [dict setObject:query forKey:@"query"];
+  
+  PGHttpWrapper *http = [[[PGHttpWrapper alloc] initWithTarget:self] autorelease];
+  [http performSelectorOnMainThread:@selector(RequestData:) withObject:dict waitUntilDone:NO];
+}
+
+- (void) StreetsFound:(NSData*)Data {
+
+  NSMutableArray *array = [NSMutableArray array];
+  
+  NSString *xml = [[NSString alloc] initWithData:Data encoding:NSUTF8StringEncoding];
+  [PGParser LbsParser:xml withResult:array withGeoStatus:nil];
+  [xml release];
+
+  [self ProtocolManager:array];
+}
+
+   
+#pragma mark Protocol
+
+- (void) ProtocolManager:(NSArray*)Array {
+  if ( _Delegate && [_Delegate conformsToProtocol:@protocol(PGAutocompleteDelegate)] && [_Delegate respondsToSelector:@selector(GetAutocompleteResults:)] )
+    [_Delegate performSelector:@selector(GetAutocompleteResults:) withObject:Array];
+}
+
+
+@end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

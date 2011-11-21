@@ -1,0 +1,39 @@
+//
+//  WayPoint.m
+//  PGIPHONE
+//
+//  Created by Alessio Roberto on 23/02/11.
+//  Copyright 2011 SEAT Pagine Gialle. All rights reserved.
+//
+
+#import "PGWayPoint.h"
+#import "PGFormule.h"
+
+@implementation PGWayPoint
+@synthesize WayPointXY = m_WayPointXY, DrwAt = m_DrwAt;
+
+- (void) initWayPoint:(float)x addY:(float)y addLoc:(NSString *)loc addDsc:(NSString *)dsc addDrwX:(float)drwX addDrwY:(float)drwY
+{
+	m_WayPointXY = PGLocationCoordinate2DMake(y, x);	
+	m_localita = [loc retain];
+	m_descrizione = [dsc retain];
+	m_DrwAt = CoordsUTMMake(drwY, drwX);
+}
+
+- (void) dealloc
+{
+	if (m_localita) 
+	{
+		[m_localita release];
+		m_localita = nil;
+	}
+	if (m_descrizione) 
+	{
+		[m_descrizione release];
+		m_descrizione = nil;
+	}
+	
+	[super dealloc];
+}
+
+@end

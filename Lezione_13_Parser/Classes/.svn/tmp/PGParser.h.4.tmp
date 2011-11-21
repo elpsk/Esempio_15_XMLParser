@@ -1,0 +1,35 @@
+//
+//  Parser.h
+//  tc
+//
+//  Created by Gianluca Folloni on 03/02/11.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+#import "Costanti.h"
+#import "PGRouteResults.h"
+#import "PGParams.h"
+#import "PGGeoResult.h"
+
+
+@interface PGParser : NSObject {
+}
+
+  NSString *XmlDoc;
+
++ (void) routingParser:(PGRouteResults *)RouteResults inputXML:(NSString*)xml;
+
++ (NSMutableArray*) LbsParser:(NSString*)Query withConfig:(PGParams*)Config;
++ (int) LbsParser:(NSString *)Query withConfig:(PGParams *)Config withResult:(NSMutableArray*)Result;
+
++ (void) ReverseParser:(PGGeoResult*)Geo inputXml:(NSString*)Xml;
+
++ (void) MapConfigParser:(PGParams*)Params inputXml:(NSString*)Xml;
+
++ (void) MapBoundsParser:(NSMutableArray*)Bounds inputXml:(NSString*)Xml;
+
++ (void) MapServerParser:(NSMutableArray*)Servers inputXml:(NSString*)Xml;
+
+@end
